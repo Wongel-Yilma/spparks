@@ -96,10 +96,13 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   json j;
   in >> j;
 
-  first = j["first"];
-  second = j["second"];
-  third = j["third"];
-  fourth = j["fourth"];
+  first = j["1nn"];
+  second = j["2nn"];
+  third = j["3nn"];
+  fourth = j["4nn"];
+  fifth = j["5nn"];
+  destinations = j["fcc_destinations"];
+
 
   std::ifstream in2("nn_model.json");
   json json_file_1;
@@ -114,8 +117,11 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   w3_2 = json_file_1["w3"][1];
   w4_1 = json_file_1["w4"][0];
   w4_2 = json_file_1["w4"][1];
+  w5_1 = json_file_1["w5"][0];
+  w5_2 = json_file_1["w5"][1];
+  
 
-  w5 = json_file_1["w5"][0];
+  w6 = json_file_1["w6"][0];
 
 
   b1 = json_file_1["b1"];
@@ -123,6 +129,8 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   b3 = json_file_1["b3"];
   b4 = json_file_1["b4"];
   b5 = json_file_1["b5"];
+  b6 = json_file_1["b6"];
+
 
 
 
@@ -606,7 +614,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 
   int l, m, o ;
   double dist;
-  int ll, mm;
+  int ll, mm, lll, mmm;
   int num_occupied_sites = 0;
   int arr_size = maxneigh+maxneigh*maxneigh;
   int occupied_sites[arr_size];
@@ -640,6 +648,19 @@ double AppDiffusionCustom::site_propensity_linear(int i)
           num_occupied_sites++;
         }
         neigh_check[mm] = 1;  // Setting the neighbor check for the second layer
+        for (lll=0; lll<maxneigh; lll++){
+          mmm = neighbor[mm][lll];
+          if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
+            for(o = 0; o<3; o++){
+              dist = xyz[mmm][o] - xyz[i][o];
+              local_coord[o] = xyz[mmm][o] - xyz[i][o];
+            }
+            occupied_coords.push_back(local_coord);
+            occupied_sites[num_occupied_sites] = mmm;
+            num_occupied_sites++;
+          }
+          neigh_check[mmm] = 1;
+        }
     }
   }
   // Reversing back the changes and consider the periodicity
@@ -659,15 +680,59 @@ double AppDiffusionCustom::site_propensity_linear(int i)
         occupied_coords[l][o] = dist;
       }
     }
-    // std::cout<< "Occupied "<< occupied_coords[l][0] << " "<< occupied_coords[l][1]<<' '<< occupied_coords[l][2]<< std::endl;
-    }
-  // std::cout << std::endl;
+  }
   proball = 0.0;
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
+    // Adding the environment around the destination site
 
+    for (l=0; l<numneigh[j];l++){
+      m = neighbor[j][l];
+      if (lattice[m]==OCCUPIED && neigh_check[m] == 0){
+        for(o = 0; o<3; o++){
+          local_coord[o] = xyz[m][o] - xyz[i][o];
+        }
+        occupied_coords.push_back(local_coord); 
+        occupied_sites[num_occupied_sites] = m;
+        num_occupied_sites++;
+      }
+      neigh_check[m] = 1;
+      for (ll=0; ll<maxneigh; ll++){
+          mm = neighbor[m][ll];
+          if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
+            for(o = 0; o<3; o++){
+              dist = xyz[mm][o] - xyz[i][o];
+              local_coord[o] = xyz[mm][o] - xyz[i][o];
+            }
+            occupied_coords.push_back(local_coord);
+            occupied_sites[num_occupied_sites] = mm;
+            num_occupied_sites++;
+          }
+          neigh_check[mm] = 1;  // Setting the neighbor check for the second layer
+          for (lll=0; lll<maxneigh; lll++){
+            mmm = neighbor[mm][lll];
+            if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
+              for(o = 0; o<3; o++){
+                dist = xyz[mmm][o] - xyz[i][o];
+                local_coord[o] = xyz[mmm][o] - xyz[i][o];
+              }
+              occupied_coords.push_back(local_coord);
+              occupied_sites[num_occupied_sites] = mmm;
+              num_occupied_sites++;
+            }
+            neigh_check[mmm] = 1;
+          }
+      }
+    }
+    
+    
+    
+    
     eflag = NNHOP;
     probone = 1;
+
+
+    
     // eb = calculate_barrier_energy(i,j,occupied_coords);
     // probone = exp(-eb/temperature)*(NUHOP);
     add_event(i,j,probone,eflag);
@@ -684,41 +749,207 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 
 /* ---------------------------------------------------------------------- */
 
+double AppDiffusionCustom::vec_dot(const std::vector<double> &a,const std::vector<double> &b){
+  double c = a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  return c;
+}
+
+std::vector<double> AppDiffusionCustom::vec_cross(const std::vector<double> &a,const std::vector<double> &b){
+  std::vector<double> c(3,0.0);
+  c[0] = a[1]*b[2] - a[2]*b[1];
+  c[1] = a[2]*b[0] - a[0]*b[2];
+  c[2] = a[0]*b[1] - a[1]*b[0];
+  return c;
+}
+
+double AppDiffusionCustom::vec_norm(const std::vector<double> &a){
+  double c = std::sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
+  return c;
+}
+
+std::vector<double> AppDiffusionCustom::mat_vecmul(const std::vector<std::vector<double>> &B,const std::vector<double> &a){
+  
+  int m = a.size();
+  int p = B.size();
+  int q = B[0].size();
+  std::vector<double> c(q,0.0);
+  for (int i =0; i<p;i++){
+      for(int k=0; k<m; k++){
+          c[i] +=  B[k][i]*a[k];
+      }
+  }
+  return c;
+}
+
+
+
 double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<std::vector <double>> &local_coords){
 
   int k, kk, o, flag;
   double x , y,z, dist;
   double n_occupied=0.0;
-  std::vector <double> first_shell(12);
-  std::vector <double> second_shell(6);
-  std::vector <double> third_shell(24);
-  std::vector <double> fourth_shell(12);
+  std::vector <double> first_shell(18,0.0);
+  std::vector <double> second_shell(8,0.0);
+  std::vector <double> third_shell(32,0.0);
+  std::vector <double> fourth_shell(14,0.0);
+  std::vector <double> fifth_shell(28,0.0);
 
-  std::vector <double> coord(3);
+  std::vector <double> new_x(3);
+  std::vector <double> new_y(3);
+  std::vector <double> new_z(3);
 
-  std::fill(first_shell.begin(), first_shell.end(), -1.0/2);
-  std::fill(second_shell.begin(), second_shell.end(), -1.0/4);
-  std::fill(third_shell.begin(), third_shell.end(), -1.0/6);
-  std::fill(fourth_shell.begin(), fourth_shell.end(), -1.0/8);
+  std::vector<std::vector<double>> R(3,std::vector<double>(3,0));
+  std::vector<std::vector<double>> original_cs = {{1,0,0}, {0,1,0}, {0,0,1}};
+  std::vector<std::vector<double>> rotated_cs(3,std::vector<double>(3,0));
+
+  std::vector<std::vector<double>> rotated_coords(local_coords.size(), std::vector<double>(3,0));
 
 
-  std::vector <double> destination(3);
-  for(o=0; o<3; o++){
-    dist = xyz[j][o] - xyz[i][o];
-    if (dist>4){
-      destination[o] = dist- box_dims[o] ;
+
+  
+  for (size_t o; o<3; o++){
+    new_x[o] = xyz[j][o] - xyz[i][o];
+    if (new_x[o]>4){
+      new_x[o] = new_x[o]- box_dims[o] ;
     }
-    else if (dist<-4){
-      destination[o] = dist + box_dims[o];
-    }
-    else{
-      destination[o] = dist;
+    else if (new_x[o]<-4){
+      new_x[o] = new_x[o] + box_dims[o];
     }
   }
-  // std::cout << "Destination "<< destination[0] << " "<< destination[1]<<' '<< destination[2]<< std::endl;
+  
+  double dot_product = 1.0;
+  
+  for (int l =0;l<destinations.size();l++){
+    dot_product = vec_dot(new_x, destinations[l]);
+    if (dot_product==0){
+      new_y = destinations[l];
+      break;
+    }
+  }
+  rotated_cs[0]= new_x;
+  rotated_cs[1]= new_y;
+  rotated_cs[2]= new_z;
+  
+  std::vector<double> new_z = vec_cross(new_x, new_y);
+  for ( k=0; k<3; k++){
+    for ( kk=0; kk<3; kk++){
+        R[k][kk] = vec_dot(original_cs[k],rotated_cs[kk])/(vec_norm(original_cs[k])*vec_norm(rotated_cs[kk]));
+    }
+  }
+  // Rotating the local coordinates with R
+  for ( k = 0; k<local_coords.size();k++){
+    rotated_coords[k] = mat_vecmul(R,local_coords[k]);
+  }
 
+  //Checking the occupancy of the local coordinates
+
+  for (k =0; k<local_coords.size();k++){
+    for (kk=0;kk<first_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (first[kk][o]!=rotated_coords[k][o]){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        first_shell[kk] = 1.0/2;
+        n_occupied++;
+        break;
+      }
+    }
+    // Moving to the second shell
+    for (kk=0;kk<second_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (second[kk][o]!=rotated_coords[k][o]){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        second_shell[kk] = 1.0/4;
+        n_occupied++;
+        break;
+      }
+    }
+    // Moving to the third shell
+    for (kk=0;kk<third_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (third[kk][o]!=rotated_coords[k][o]){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        third_shell[kk] = 1.0/6;
+        n_occupied++;
+        break;
+      }
+    }
+    // Moving to the fourth shell 
+    for (kk=0;kk<fourth_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (fourth[kk][o]!=rotated_coords[k][o]){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        fourth_shell[kk] = 1.0/8;
+        n_occupied++;
+        break;
+      }
+    }
+    // Moving to the fifth shell
+    for (kk=0;kk<fifth_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (fifth[kk][o]!=rotated_coords[k][o]){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        fifth_shell[kk] = 1.0/10;
+        n_occupied++;
+        break;
+      }
+    }
+  }
+
+  
+
+  // std::vector <double> coord(3);
+
+  // std::fill(first_shell.begin(), first_shell.end(), -1.0/2);
+  // std::fill(second_shell.begin(), second_shell.end(), -1.0/4);
+  // std::fill(third_shell.begin(), third_shell.end(), -1.0/6);
+  // std::fill(fourth_shell.begin(), fourth_shell.end(), -1.0/8);
+  // std::fill(fifth_shell.begin(), fifth_shell.end(), -1.0/10);
+
+
+
+
+  // std::vector <double> destination(3);
+  // for(o=0; o<3; o++){
+  //   dist = xyz[j][o] - xyz[i][o];
+  //   if (dist>4){
+  //     destination[o] = dist- box_dims[o] ;
+  //   }
+  //   else if (dist<-4){
+  //     destination[o] = dist + box_dims[o];
+  //   }
+  //   else{
+  //     destination[o] = dist;
+  //   }
+  // }
+  // std::cout << "Destination "<< destination[0] << " "<< destination[1]<<' '<< destination[2]<< std::endl;
+ /*
   // Check if the coordinates match the destination
-        // If they do, set the first shell to -2.0
+  //       If they do, set the first shell to -2.0
     for (kk=0; kk<first_shell.size(); kk++){
       flag =2;
       for(o=0; o<3; o++){
@@ -806,16 +1037,24 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
     // std::cout << "Occupied "<< x << " "<< y<<' '<< z<< std::endl;
   }
 
+
+
+  */
+
   // First layer matrix operations
     std::vector<double> z1_1 = add_vec( vec_matmul(first_shell, w1_1), b1[0]);
     std::vector<double> z2_1 = add_vec(vec_matmul(second_shell, w2_1), b2[0]);
     std::vector<double> z3_1 = add_vec( vec_matmul(third_shell, w3_1), b3[0]);
     std::vector<double> z4_1 = add_vec(vec_matmul(fourth_shell, w4_1), b4[0]);
+    std::vector<double> z5_1 = add_vec(vec_matmul(fourth_shell, w5_1), b5[0]);
+
 
     std::vector<double> a1_1 = relu(z1_1);
     std::vector<double> a2_1 = relu(z2_1);
     std::vector<double> a3_1 = relu(z3_1);
     std::vector<double> a4_1 = relu(z4_1);
+    std::vector<double> a5_1 = relu(z5_1);
+
 
 
   // Second layer matrix operations
@@ -824,21 +1063,27 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
     std::vector<double> z2_2 = add_vec(vec_matmul(a2_1, w2_2), b2[1]);
     std::vector<double> z3_2 = add_vec(vec_matmul(a3_1, w3_2), b3[1]);
     std::vector<double> z4_2 = add_vec(vec_matmul(a4_1, w4_2), b4[1]);
+    std::vector<double> z5_2 = add_vec(vec_matmul(a5_1, w5_2), b5[1]);
+
 
     std::vector<double> a1_2 = relu(z1_2);
     std::vector<double> a2_2 = relu(z2_2);
     std::vector<double> a3_2 = relu(z3_2);
     std::vector<double> a4_2 = relu(z4_2);
+    std::vector<double> a5_2 = relu(z5_2);
+
 
   // Concatenating and performing final layer matrix operations
     a1_2.insert(a1_2.end(), a2_2.begin(), a2_2.end());
     a1_2.insert(a1_2.end(), a3_2.begin(), a3_2.end());
     a1_2.insert(a1_2.end(), a4_2.begin(), a4_2.end());
-    std::vector<double> z3 = add_vec(vec_matmul(a1_2, w5), b5[0]);
+    a1_2.insert(a1_2.end(), a5_2.begin(), a5_2.end());
+    std::vector<double> z3 = add_vec(vec_matmul(a1_2, w6), b6[0]);
 
 
     // std::cout << "Barrier energy: " << z3[0] << std::endl;
   return z3[0];
+
 }
 
 std::vector<double> AppDiffusionCustom::relu(std::vector<double> &z){
@@ -1849,8 +2094,12 @@ void AppDiffusionCustom::allocate_data()
   json j;
   in >> j;
 
-  std::vector<std::vector<double>> first = j["first"];
-  std::vector<std::vector<double>> second = j["second"];
+  std::vector<std::vector<double>> first = j["1nn"];
+  std::vector<std::vector<double>> second = j["2nn"];
+  std::vector<std::vector<double>> third = j["3nn"];
+  std::vector<std::vector<double>> fourth = j["4nn"];
+  std::vector<std::vector<double>> fifth = j["5nn"];
+
 
   // int q, qq;
 

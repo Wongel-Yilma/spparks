@@ -53,18 +53,26 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<std::vector<double>> second;
   std::vector<std::vector<double>> third;
   std::vector<std::vector<double>> fourth;
+  std::vector<std::vector<double>> fifth;
+  std::vector<std::vector<double>> destinations;
+
+
 
   std::vector<std::vector<double>> w1_1;
   std::vector<std::vector<double>> w1_2 ;
   std::vector<std::vector<double>> w2_1;
   std::vector<std::vector<double>> w2_2 ;
-
   std::vector<std::vector<double>> w3_1;
   std::vector<std::vector<double>> w3_2 ;
   std::vector<std::vector<double>> w4_1;
   std::vector<std::vector<double>> w4_2 ;
+  std::vector<std::vector<double>> w5_1;
+  std::vector<std::vector<double>> w5_2;
 
-  std::vector<std::vector<double>> w5 ;
+  std::vector<std::vector<double>> w6;
+
+
+
 
 
   std::vector<std::vector<double>> b1 ;
@@ -72,6 +80,8 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<std::vector<double>> b3 ;
   std::vector<std::vector<double>> b4 ;
   std::vector<std::vector<double>> b5 ;
+  std::vector<std::vector<double>> b6 ;
+
 
 
 
@@ -142,6 +152,11 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<double> relu(std::vector<double> &);
   std::vector<double> add_vec(const std::vector<double> &, const std::vector<double> &);
   std::vector<double> vec_matmul(const std::vector<double> &,const std::vector<std::vector<double>> &);
+  double vec_dot(const std::vector<double> &,const std::vector<double> &);
+  double vec_norm(const std::vector<double> &);
+  std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
+
+  std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
 
   
 
