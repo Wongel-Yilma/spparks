@@ -914,13 +914,11 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
     std::vector<double> z4_2 = add_vec(vec_matmul(a4_1, w4_2), b4[1]);
     std::vector<double> z5_2 = add_vec(vec_matmul(a5_1, w5_2), b5[1]);
 
-
     std::vector<double> a1_2 = relu(z1_2);
     std::vector<double> a2_2 = relu(z2_2);
     std::vector<double> a3_2 = relu(z3_2);
     std::vector<double> a4_2 = relu(z4_2);
     std::vector<double> a5_2 = relu(z5_2);
-
 
   // Concatenating and performing final layer matrix operations
     a1_2.insert(a1_2.end(), a2_2.begin(), a2_2.end());
