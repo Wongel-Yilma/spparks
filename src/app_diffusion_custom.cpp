@@ -681,7 +681,6 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   }
   // Reversing back the changes and consider the periodicity
   neigh_check[i]=0;
-
   for(l=0; l<num_occupied_sites; l++){
     m = occupied_sites[l];
     neigh_check[m] = 0;

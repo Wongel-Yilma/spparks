@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "build with make",
+        "type": "shell",
+        "command": "make",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": ["$gcc"],
+        "detail": "Build project using Makefile"
+      },
+      {
+        "label": "build with serial debug makefile",
+        "type": "shell",
+        "command": "make serial_debug",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": ["$gcc"],
+        "detail": "Build project using the serial debug Makefile"
+      }
+    ]
+  }
