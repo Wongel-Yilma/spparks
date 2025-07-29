@@ -1,0 +1,93 @@
+# FastDep v2.1 for LAMMPS
+# Search path: .:..
+#    89 sources
+#   111 includes
+#   182 depfiles
+am_bezier.o : ../am_bezier.cpp ../fourth_order_bezier.h ../am_bezier.h ../kdtree.h
+app_am_ellipsoid.o : ../app_am_ellipsoid.cpp ../app_potts.h ../app_am_ellipsoid.h ../pointers.h ../app.h ../potts_am_path_parser.h ../spktype.h ../spparks.h ../domain.h ../am_raster.h ../am_ellipsoid.h ../solve.h ../error.h ../app_lattice.h ../random_park.h ../lattice.h
+app_chemistry.o : ../app_chemistry.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../timer.h ../output.h ../finish.h ../solve.h ../error.h ../memory.h ../app_chemistry.h
+app.o : ../app.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../timer.h ../domain.h ../finish.h ../error.h ../memory.h
+app_diffusion.o : ../app_diffusion.cpp ../app_diffusion.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../random_mars.h ../domain.h ../comm_lattice.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_diffusion_custom.o : ../app_diffusion_custom.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../json.hpp ../random_mars.h ../domain.h ../app_diffusion_custom.h ../comm_lattice.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_diffusion_multiphase.o : ../app_diffusion_multiphase.cpp ../pointers.h ../app.h ../spktype.h ../app_diffusion_multiphase.h ../spparks.h ../domain.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_erbium.o : ../app_erbium.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_erbium.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_ising.o : ../app_ising.cpp ../pointers.h ../app.h ../spktype.h ../app_ising.h ../spparks.h ../solve.h ../error.h ../app_lattice.h ../random_park.h
+app_ising_single.o : ../app_ising_single.cpp ../pointers.h ../app.h ../spktype.h ../app_ising.h ../spparks.h ../app_ising_single.h ../app_lattice.h ../random_park.h
+app_lattice.o : ../app_lattice.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../random_mars.h ../cluster.h ../output.h ../timer.h ../domain.h ../comm_lattice.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../lattice.h
+app_membrane.o : ../app_membrane.cpp ../app_membrane.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_off_lattice.o : ../app_off_lattice.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../random_mars.h ../output.h ../timer.h ../domain.h ../comm_off_lattice.h ../solve.h ../error.h ../memory.h ../random_park.h
+app_phasefield_potts.o : ../app_phasefield_potts.cpp ../app_potts.h ../pointers.h ../app.h ../app_potts_neighonly.h ../spktype.h ../spparks.h ../timer.h ../domain.h ../comm_lattice.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../lattice.h ../app_phasefield_potts.h
+app_potts_am_bezier.o : ../app_potts_am_bezier.cpp ../app_potts.h ../pointers.h ../app.h ../potts_am_path_parser.h ../spktype.h ../fourth_order_bezier.h ../spparks.h ../variable_haz.h ../domain.h ../am_bezier.h ../am_raster.h ../kdtree.h ../app_potts_am_bezier.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_am_path_gen.o : ../app_potts_am_path_gen.cpp ../app_potts.h ../pointers.h ../app.h ../potts_am_path_parser.h ../spktype.h ../spparks.h ../domain.h ../am_raster.h ../solve.h ../error.h ../app_lattice.h ../random_park.h ../lattice.h ../app_potts_am_path_gen.h
+app_potts_am_weld.o : ../app_potts_am_weld.cpp ../app_potts.h ../pointers.h ../app.h ../potts_am_path_parser.h ../spktype.h ../app_potts_am_weld.h ../spparks.h ../domain.h ../am_raster.h ../solve.h ../error.h ../app_lattice.h ../am_teardrop.h ../random_park.h ../lattice.h
+app_potts.o : ../app_potts.cpp ../app_potts.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../solve.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_grad.o : ../app_potts_grad.cpp ../app_potts.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../domain.h ../error.h ../app_lattice.h ../app_potts_grad.h ../random_park.h ../lattice.h
+app_potts_neigh.o : ../app_potts_neigh.cpp ../app_potts.h ../app_potts_neigh.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_neighonly.o : ../app_potts_neighonly.cpp ../app_potts.h ../pointers.h ../app.h ../app_potts_neighonly.h ../spktype.h ../spparks.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_pin.o : ../app_potts_pin.cpp ../app_potts_pin.h ../app_potts.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../random_mars.h ../solve.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_quaternion.o : ../app_potts_quaternion.cpp ../potts_quaternion/hcp_symmetries.h ../app_potts.h ../app_potts_quaternion.h ../pointers.h ../app.h ../spktype.h ../potts_quaternion/disorientation.h ../spparks.h ../potts_quaternion/cubic_symmetries.h ../potts_quaternion/quaternion.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_strain.o : ../app_potts_strain.cpp ../app_potts.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_potts_strain.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_potts_strain_pin.o : ../app_potts_strain_pin.cpp ../app_potts.h ../pointers.h ../app.h ../spktype.h ../app_potts_strain_pin.h ../spparks.h ../random_mars.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_potts_weld.o : ../app_potts_weld.cpp ../app_potts.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../weld_geometry.h ../random_mars.h ../domain.h ../app_potts_weld.h ../teardrop.h ../pool_shape.h ../error.h ../app_lattice.h ../random_park.h
+app_potts_weld_jom.o : ../app_potts_weld_jom.cpp ../app_potts.h ../app_potts_weld_jom.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../domain.h ../error.h ../app_lattice.h ../random_park.h ../lattice.h
+app_relax.o : ../app_relax.cpp ../pointers.h ../app.h ../pair.h ../app_relax.h ../spktype.h ../potential.h ../spparks.h ../app_off_lattice.h ../error.h ../random_park.h
+app_sinter.o : ../app_sinter.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../random_mars.h ../timer.h ../output.h ../domain.h ../comm_lattice.h ../app_sinter.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../lattice.h
+app_sos.o : ../app_sos.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../timer.h ../comm_lattice.h ../app_sos.h ../solve.h ../error.h ../app_lattice.h ../memory.h ../random_park.h
+app_test_group.o : ../app_test_group.cpp ../app_test_group.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../random_mars.h ../timer.h ../output.h ../finish.h ../solve.h ../error.h ../memory.h ../random_park.h
+cluster.o : ../cluster.cpp ../cluster.h
+comm_lattice.o : ../comm_lattice.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../comm_lattice.h ../error.h ../app_lattice.h ../memory.h
+comm_off_lattice.o : ../comm_off_lattice.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../domain.h ../comm_off_lattice.h ../error.h ../memory.h
+create_box.o : ../create_box.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../domain.h ../region.h ../create_box.h ../error.h
+create_sites.o : ../create_sites.cpp ../pointers.h ../app.h ../spktype.h ../potential.h ../spparks.h ../app_off_lattice.h ../create_sites.h ../random_mars.h ../domain.h ../region.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../lattice.h
+diag_array.o : ../diag_array.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../comm_off_lattice.h ../comm_lattice.h ../diag_array.h ../error.h ../app_lattice.h ../memory.h ../diag.h
+diag_cluster.o : ../diag_cluster.cpp ../diag_cluster.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../cluster.h ../output.h ../timer.h ../domain.h ../comm_lattice.h ../error.h ../app_lattice.h ../memory.h ../diag.h ../random_park.h ../lattice.h
+diag.o : ../diag.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../output.h ../timer.h ../error.h ../memory.h ../diag.h
+diag_diffusion.o : ../diag_diffusion.cpp ../app_diffusion.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../diag_diffusion.h ../error.h ../app_lattice.h ../diag.h
+diag_energy.o : ../diag_energy.cpp ../diag_energy.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../comm_off_lattice.h ../comm_lattice.h ../error.h ../app_lattice.h ../diag.h
+diag_erbium.o : ../diag_erbium.cpp ../diag_erbium.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../timer.h ../comm_lattice.h ../app_erbium.h ../error.h ../app_lattice.h ../memory.h ../diag.h
+diag_propensity.o : ../diag_propensity.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../comm_lattice.h ../error.h ../app_lattice.h ../diag.h ../diag_propensity.h
+diag_sinter_density.o : ../diag_sinter_density.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../diag_sinter_density.h ../output.h ../timer.h ../domain.h ../comm_lattice.h ../app_sinter.h ../error.h ../app_lattice.h ../memory.h ../diag.h
+diag_sinter_free_energy.o : ../diag_sinter_free_energy.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../output.h ../timer.h ../diag_sinter_free_energy.h ../comm_lattice.h ../app_sinter.h ../error.h ../app_lattice.h ../memory.h ../diag.h
+diag_sinter_free_energy_pore.o : ../diag_sinter_free_energy_pore.cpp ../pointers.h ../app.h ../spktype.h ../diag_sinter_free_energy_pore.h ../spparks.h ../output.h ../timer.h ../domain.h ../comm_lattice.h ../app_sinter.h ../error.h ../app_lattice.h ../memory.h ../diag.h
+domain.o : ../domain.cpp ../region_cylinder.h ../region_sphere.h ../pointers.h ../app.h ../region_intersect.h ../spktype.h ../spparks.h ../style_region.h ../domain.h ../region.h ../region_block.h ../region_union.h ../error.h ../memory.h ../lattice.h
+dump.o : ../dump.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../dump.h ../domain.h ../irregular.h ../error.h ../app_lattice.h ../memory.h
+dump_image.o : ../dump_image.cpp ../pointers.h ../app.h ../image.h ../spktype.h ../spparks.h ../dump_image.h ../dump.h ../random_mars.h ../dump_text.h ../domain.h ../input.h ../variable.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../math_const.h ../lattice.h
+dump_sites.o : ../dump_sites.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../dump.h ../dump_text.h ../dump_sites.h ../domain.h ../error.h
+dump_text.o : ../dump_text.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../dump.h ../dump_text.h ../domain.h ../region.h ../error.h ../app_lattice.h ../memory.h
+dump_vtk.o : ../dump_vtk.cpp ../dump_vtk.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../dump.h ../dump_text.h ../domain.h ../error.h ../lattice.h
+error.o : ../error.cpp ../pointers.h ../spktype.h ../spparks.h ../universe.h ../error.h
+finish.o : ../finish.cpp ../pointers.h ../spktype.h ../spparks.h ../timer.h ../finish.h ../memory.h
+fourth_order_bezier.o : ../fourth_order_bezier.cpp ../fourth_order_bezier.h
+groups.o : ../groups.cpp ../pointers.h ../spktype.h ../spparks.h ../random_mars.h ../groups.h ../memory.h ../random_park.h
+image.o : ../image.cpp ../pointers.h ../math_extra.h ../image.h ../spktype.h ../spparks.h ../random_mars.h ../error.h ../memory.h ../random_park.h ../math_const.h
+input.o : ../input.cpp ../app_potts.h ../app_potts_pin.h ../diag_cluster.h ../app_potts_weld_jom.h ../diag_energy.h ../diag_erbium.h ../app_potts_neigh.h ../app_test_group.h ../app_membrane.h ../app_potts_quaternion.h ../app_am_ellipsoid.h ../pointers.h ../read_sites.h ../app_diffusion.h ../app.h ../app_potts_neighonly.h ../pair.h ../style_diag.h ../potts_am_path_parser.h ../app_relax.h ../spktype.h ../diag_sinter_free_energy_pore.h ../style_solve.h ../fourth_order_bezier.h ../app_diffusion_multiphase.h ../app_ising.h ../app_potts_strain_pin.h ../potential.h ../app_potts_am_weld.h ../spparks.h ../app_off_lattice.h ../create_sites.h ../app_potts_strain.h ../style_command.h ../diag_sinter_density.h ../solve_group.h ../random_mars.h ../app_ising_single.h ../diag_sinter_free_energy.h ../solve_tree.h ../output.h ../style_app.h ../domain.h ../app_diffusion_custom.h ../input.h ../am_bezier.h ../universe.h ../app_potts_weld.h ../diag_array.h ../am_raster.h ../app_erbium.h ../kdtree.h ../app_potts_am_bezier.h ../solve_linear.h ../variable.h ../diag_diffusion.h ../pool_shape.h ../create_box.h ../app_sos.h ../app_sinter.h ../solve.h ../error.h ../app_lattice.h ../app_potts_grad.h ../memory.h ../diag.h ../random_park.h ../diag_propensity.h ../app_chemistry.h ../set.h ../shell.h ../app_potts_am_path_gen.h ../app_phasefield_potts.h
+irregular.o : ../irregular.cpp ../pointers.h ../spktype.h ../spparks.h ../irregular.h ../memory.h
+lattice.o : ../lattice.cpp ../pointers.h ../spktype.h ../spparks.h ../domain.h ../error.h ../memory.h ../lattice.h
+library.o : ../library.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../library.h ../input.h ../comm_off_lattice.h ../comm_lattice.h ../app_lattice.h
+main.o : ../main.cpp ../pointers.h ../spktype.h ../spparks.h ../input.h
+math_extra.o : ../math_extra.cpp ../pointers.h ../math_extra.h ../spktype.h ../spparks.h ../error.h
+memory.o : ../memory.cpp ../pointers.h ../spktype.h ../spparks.h ../error.h ../memory.h
+output.o : ../output.cpp ../diag_cluster.h ../dump_vtk.h ../diag_energy.h ../diag_erbium.h ../pointers.h ../app.h ../style_diag.h ../spktype.h ../diag_sinter_free_energy_pore.h ../spparks.h ../dump_image.h ../diag_sinter_density.h ../dump.h ../diag_sinter_free_energy.h ../output.h ../timer.h ../dump_text.h ../dump_sites.h ../diag_array.h ../diag_diffusion.h ../error.h ../style_dump.h ../memory.h ../diag.h ../diag_propensity.h
+pair.o : ../pair.cpp ../pointers.h ../pair.h ../spktype.h ../spparks.h ../error.h
+pair_lj_cut.o : ../pair_lj_cut.cpp ../pair_lj_cut.h ../pointers.h ../pair.h ../spktype.h ../potential.h ../spparks.h ../error.h ../memory.h
+potential.o : ../potential.cpp ../style_pair.h ../pair_lj_cut.h ../pointers.h ../pair.h ../spktype.h ../potential.h ../spparks.h ../error.h
+potts_am_path_parser.o : ../potts_am_path_parser.cpp ../app_potts.h ../pointers.h ../app.h ../potts_am_path_parser.h ../spktype.h ../spparks.h ../random_mars.h ../domain.h ../am_raster.h ../error.h ../app_lattice.h ../random_park.h ../lattice.h
+random_mars.o : ../random_mars.cpp ../pointers.h ../spktype.h ../spparks.h ../random_mars.h ../error.h
+random_park.o : ../random_park.cpp ../spktype.h ../random_park.h
+read_sites.o : ../read_sites.cpp ../read_sites.h ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../create_sites.h ../domain.h ../error.h ../app_lattice.h ../memory.h
+region_block.o : ../region_block.cpp ../pointers.h ../spktype.h ../spparks.h ../domain.h ../region.h ../region_block.h ../error.h
+region.o : ../region.cpp ../pointers.h ../spktype.h ../spparks.h ../domain.h ../region.h ../error.h ../lattice.h
+region_cylinder.o : ../region_cylinder.cpp ../region_cylinder.h ../pointers.h ../spktype.h ../spparks.h ../domain.h ../region.h ../error.h
+region_intersect.o : ../region_intersect.cpp ../pointers.h ../region_intersect.h ../spktype.h ../spparks.h ../domain.h ../region.h ../error.h
+region_sphere.o : ../region_sphere.cpp ../region_sphere.h ../pointers.h ../spktype.h ../spparks.h ../region.h ../error.h
+region_union.o : ../region_union.cpp ../pointers.h ../spktype.h ../spparks.h ../domain.h ../region.h ../region_union.h ../error.h
+set.o : ../set.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../app_off_lattice.h ../random_mars.h ../domain.h ../region.h ../error.h ../app_lattice.h ../memory.h ../random_park.h ../set.h
+shell.o : ../shell.cpp ../pointers.h ../spktype.h ../spparks.h ../error.h ../shell.h
+solve.o : ../solve.cpp ../pointers.h ../spktype.h ../spparks.h ../solve.h
+solve_group.o : ../solve_group.cpp ../pointers.h ../spktype.h ../spparks.h ../solve_group.h ../random_mars.h ../domain.h ../solve.h ../groups.h ../error.h ../memory.h ../random_park.h
+solve_linear.o : ../solve_linear.cpp ../pointers.h ../spktype.h ../spparks.h ../random_mars.h ../domain.h ../solve_linear.h ../solve.h ../error.h ../memory.h ../random_park.h
+solve_tree.o : ../solve_tree.cpp ../pointers.h ../spktype.h ../spparks.h ../random_mars.h ../solve_tree.h ../domain.h ../solve.h ../error.h ../memory.h ../random_park.h
+spparks.o : ../spparks.cpp ../app_potts.h ../app_potts_pin.h ../diag_cluster.h ../dump_vtk.h ../app_potts_weld_jom.h ../style_pair.h ../diag_energy.h ../diag_erbium.h ../app_potts_neigh.h ../app_test_group.h ../app_membrane.h ../pair_lj_cut.h ../region_cylinder.h ../app_potts_quaternion.h ../app_am_ellipsoid.h ../region_sphere.h ../pointers.h ../read_sites.h ../app_diffusion.h ../app.h ../app_potts_neighonly.h ../pair.h ../style_diag.h ../potts_am_path_parser.h ../region_intersect.h ../app_relax.h ../spktype.h ../diag_sinter_free_energy_pore.h ../style_solve.h ../fourth_order_bezier.h ../app_diffusion_multiphase.h ../app_ising.h ../app_potts_strain_pin.h ../potential.h ../app_potts_am_weld.h ../spparks.h ../dump_image.h ../app_off_lattice.h ../create_sites.h ../app_potts_strain.h ../style_region.h ../style_command.h ../diag_sinter_density.h ../solve_group.h ../random_mars.h ../app_ising_single.h ../dump.h ../diag_sinter_free_energy.h ../solve_tree.h ../timer.h ../output.h ../style_app.h ../dump_text.h ../dump_sites.h ../domain.h ../app_diffusion_custom.h ../input.h ../region.h ../am_bezier.h ../universe.h ../app_potts_weld.h ../diag_array.h ../region_block.h ../am_raster.h ../app_erbium.h ../kdtree.h ../app_potts_am_bezier.h ../solve_linear.h ../diag_diffusion.h ../pool_shape.h ../create_box.h ../app_sos.h ../region_union.h ../app_sinter.h ../solve.h ../error.h ../app_lattice.h ../app_potts_grad.h ../memory.h ../style_dump.h ../diag.h ../random_park.h ../diag_propensity.h ../app_chemistry.h ../set.h ../shell.h ../app_potts_am_path_gen.h ../app_phasefield_potts.h
+timer.o : ../timer.cpp ../pointers.h ../spktype.h ../spparks.h ../timer.h ../memory.h
+universe.o : ../universe.cpp ../pointers.h ../spktype.h ../version.h ../spparks.h ../universe.h ../memory.h
+variable.o : ../variable.cpp ../pointers.h ../app.h ../spktype.h ../spparks.h ../universe.h ../variable.h ../error.h ../memory.h

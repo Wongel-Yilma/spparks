@@ -1,0 +1,51 @@
+
+variable SEED equal                 1
+
+variable T equal                 0.034469333048
+
+
+app_style   diffusion_custom linear  hop nn_model.json shells.json barrier.csv
+dimension	 3
+
+
+boundary p p p
+
+#lattice     sc/6n 1
+lattice 	fcc 1
+
+region      box block 0 10 0 10 0 20
+create_box  box 
+# region      origin block 0 3 0 3 0 3
+
+create_sites region box value site 1
+
+seed		 ${SEED}
+
+variable 	c loop 39
+
+
+label 		cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+
+
+set     site value 2 if z = $p fraction $o
+
+next 	c
+jump 	in.diffuse  cloop
+
+
+
+
+solve_style     tree
+sector          yes
+diag_style       energy
+temperature	    ${T}
+stats            1e-10
+
+dump            1 text 1e-10 my.dump id site x y z
+
+
+run             1e-9

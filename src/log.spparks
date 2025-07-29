@@ -1,0 +1,726 @@
+SPPARKS (27 Nov 2024)
+
+variable SEED equal                 1
+
+variable T equal                 0.034469333048
+
+
+app_style   diffusion_custom linear  hop nn_model.json shells.json 
+dimension	 3
+
+
+boundary p p p
+
+#lattice     sc/6n 1
+lattice 	fcc 1
+
+region      box block 0 10 0 10 0 20
+create_box  box 
+Created box = (0 0 0) to (10 10 20)
+  1 by 1 by 1 processor grid
+# region      origin block 0 3 0 3 0 3
+
+create_sites region box value site 1
+Creating sites ...
+  8000 sites
+  8000 sites have 12 neighbors
+
+seed		 ${SEED}
+seed		 1
+
+variable 	c loop 39
+
+
+label 		cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		0.5
+0.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 0.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 0.5 fraction $o
+set     site value 2 if z = 0.5 fraction 0.025
+  8 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		1
+1
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 1 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 1 fraction $o
+set     site value 2 if z = 1 fraction 0.05
+  10 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		1.5
+1.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 1.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 1.5 fraction $o
+set     site value 2 if z = 1.5 fraction 0.075
+  21 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		2
+2
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 2 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 2 fraction $o
+set     site value 2 if z = 2 fraction 0.1
+  16 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		2.5
+2.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 2.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 2.5 fraction $o
+set     site value 2 if z = 2.5 fraction 0.125
+  27 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		3
+3
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 3 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 3 fraction $o
+set     site value 2 if z = 3 fraction 0.15
+  35 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		3.5
+3.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 3.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 3.5 fraction $o
+set     site value 2 if z = 3.5 fraction 0.175
+  34 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		4
+4
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 4 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 4 fraction $o
+set     site value 2 if z = 4 fraction 0.2
+  35 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		4.5
+4.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 4.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 4.5 fraction $o
+set     site value 2 if z = 4.5 fraction 0.225
+  50 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		5
+5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 5 fraction $o
+set     site value 2 if z = 5 fraction 0.25
+  56 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		5.5
+5.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 5.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 5.5 fraction $o
+set     site value 2 if z = 5.5 fraction 0.275
+  49 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		6
+6
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 6 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 6 fraction $o
+set     site value 2 if z = 6 fraction 0.3
+  56 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		6.5
+6.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 6.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 6.5 fraction $o
+set     site value 2 if z = 6.5 fraction 0.325
+  54 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		7
+7
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 7 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 7 fraction $o
+set     site value 2 if z = 7 fraction 0.35
+  70 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		7.5
+7.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 7.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 7.5 fraction $o
+set     site value 2 if z = 7.5 fraction 0.375
+  78 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		8
+8
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 8 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 8 fraction $o
+set     site value 2 if z = 8 fraction 0.4
+  80 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		8.5
+8.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 8.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 8.5 fraction $o
+set     site value 2 if z = 8.5 fraction 0.425
+  78 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		9
+9
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 9 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 9 fraction $o
+set     site value 2 if z = 9 fraction 0.45
+  87 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		9.5
+9.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 9.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal v_p*0.05
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 9.5 fraction $o
+set     site value 2 if z = 9.5 fraction 0.475
+  85 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		10
+10
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 10 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 10 fraction $o
+set     site value 2 if z = 10 fraction 0.5
+  103 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		10.5
+10.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 10.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 10.5 fraction $o
+set     site value 2 if z = 10.5 fraction 0.475
+  94 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		11
+11
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 11 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 11 fraction $o
+set     site value 2 if z = 11 fraction 0.45
+  84 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		11.5
+11.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 11.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 11.5 fraction $o
+set     site value 2 if z = 11.5 fraction 0.425
+  77 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		12
+12
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 12 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 12 fraction $o
+set     site value 2 if z = 12 fraction 0.4
+  78 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		12.5
+12.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 12.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 12.5 fraction $o
+set     site value 2 if z = 12.5 fraction 0.375
+  66 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		13
+13
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 13 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 13 fraction $o
+set     site value 2 if z = 13 fraction 0.35
+  56 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		13.5
+13.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 13.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 13.5 fraction $o
+set     site value 2 if z = 13.5 fraction 0.325
+  62 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		14
+14
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 14 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 14 fraction $o
+set     site value 2 if z = 14 fraction 0.3
+  48 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		14.5
+14.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 14.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 14.5 fraction $o
+set     site value 2 if z = 14.5 fraction 0.275
+  63 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		15
+15
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 15 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 15 fraction $o
+set     site value 2 if z = 15 fraction 0.25
+  55 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		15.5
+15.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 15.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 15.5 fraction $o
+set     site value 2 if z = 15.5 fraction 0.225
+  44 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		16
+16
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 16 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 16 fraction $o
+set     site value 2 if z = 16 fraction 0.2
+  37 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		16.5
+16.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 16.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 16.5 fraction $o
+set     site value 2 if z = 16.5 fraction 0.175
+  33 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		17
+17
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 17 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 17 fraction $o
+set     site value 2 if z = 17 fraction 0.15
+  31 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		17.5
+17.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 17.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 17.5 fraction $o
+set     site value 2 if z = 17.5 fraction 0.125
+  17 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		18
+18
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 18 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 18 fraction $o
+set     site value 2 if z = 18 fraction 0.1
+  18 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		18.5
+18.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 18.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 18.5 fraction $o
+set     site value 2 if z = 18.5 fraction 0.075
+  18 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		19
+19
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 19 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 19 fraction $o
+set     site value 2 if z = 19 fraction 0.05
+  11 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+variable 	p equal (v_c)*0.5
+print 		$p
+print 		19.5
+19.5
+if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if 19.5 < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+variable o equal (20-v_p)*0.05 
+
+
+set     site value 2 if z = $p fraction $o
+set     site value 2 if z = 19.5 fraction $o
+set     site value 2 if z = 19.5 fraction 0.025
+  5 settings made for site
+
+next 	c
+jump 	in.diffuse  cloop
+
+
+
+
+solve_style     tree
+sector          yes
+diag_style       energy
+temperature	    ${T}
+temperature	    0.03446933305
+stats            1e-10
+
+dump            1 text 1e-10 my.dump id site x y z
+
+
+run             1e-9
+Setting up run ...
+Running with 32-bit site IDs
+Memory usage per processor = 2.625 Mbytes
+      Time    Naccept    Nreject    Nsweeps        CPU     Energy
+         0          0          0          0          0      15874
+     1e-09       1454          0          1         50      15234
+Loop time of 50.0487 on 1 procs
+
+Solve time (%) = 0.000580311 (0.00115949)
+Update time (%) = 0 (0)
+Comm  time (%) = 3.27507 (6.54377)
+Outpt time (%) = 0.00856709 (0.0171175)
+App   time (%) = 46.7643 (93.4376)
+Other time (%) = 0.000169992 (0.000339654)

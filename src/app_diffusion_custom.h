@@ -21,6 +21,8 @@ AppStyle(diffusion_custom,AppDiffusionCustom)
 
 #include "app_lattice.h"
 #include <vector>
+#include <fstream>
+
 
 namespace SPPARKS_NS {
 
@@ -55,8 +57,7 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<std::vector<double>> fourth;
   std::vector<std::vector<double>> fifth;
   std::vector<std::vector<double>> destinations;
-
-
+  std::ofstream csv_file; // File stream for writing to CSV
 
   std::vector<std::vector<double>> w1_1;
   std::vector<std::vector<double>> w1_2 ;
@@ -71,20 +72,12 @@ class AppDiffusionCustom : public AppLattice {
 
   std::vector<std::vector<double>> w6;
 
-
-
-
-
   std::vector<std::vector<double>> b1 ;
   std::vector<std::vector<double>> b2 ;
   std::vector<std::vector<double>> b3 ;
   std::vector<std::vector<double>> b4 ;
   std::vector<std::vector<double>> b5 ;
   std::vector<std::vector<double>> b6 ;
-
-
-
-
 
   int dimension;
   int *lattice;
@@ -157,9 +150,6 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
 
   std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
-
-  
-
 
   void site_event_linear(int, class RandomPark *);
   void site_event_nonlinear(int, class RandomPark *);
