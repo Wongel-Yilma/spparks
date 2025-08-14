@@ -21,11 +21,8 @@ AppStyle(diffusion_custom,AppDiffusionCustom)
 
 #include "app_lattice.h"
 #include <vector>
-<<<<<<< HEAD
 #include <fstream>
 
-=======
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
 
 namespace SPPARKS_NS {
 
@@ -58,48 +55,29 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<std::vector<double>> second;
   std::vector<std::vector<double>> third;
   std::vector<std::vector<double>> fourth;
-<<<<<<< HEAD
   std::vector<std::vector<double>> fifth;
   std::vector<std::vector<double>> destinations;
   std::ofstream csv_file; // File stream for writing to CSV
-=======
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
 
   std::vector<std::vector<double>> w1_1;
   std::vector<std::vector<double>> w1_2 ;
   std::vector<std::vector<double>> w2_1;
   std::vector<std::vector<double>> w2_2 ;
-<<<<<<< HEAD
-=======
-
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
   std::vector<std::vector<double>> w3_1;
   std::vector<std::vector<double>> w3_2 ;
   std::vector<std::vector<double>> w4_1;
   std::vector<std::vector<double>> w4_2 ;
-<<<<<<< HEAD
   std::vector<std::vector<double>> w5_1;
   std::vector<std::vector<double>> w5_2;
 
   std::vector<std::vector<double>> w6;
-=======
-
-  std::vector<std::vector<double>> w5 ;
-
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
 
   std::vector<std::vector<double>> b1 ;
   std::vector<std::vector<double>> b2 ;
   std::vector<std::vector<double>> b3 ;
   std::vector<std::vector<double>> b4 ;
   std::vector<std::vector<double>> b5 ;
-<<<<<<< HEAD
   std::vector<std::vector<double>> b6 ;
-=======
-
-
-
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
 
   int dimension;
   int *lattice;
@@ -167,17 +145,11 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<double> relu(std::vector<double> &);
   std::vector<double> add_vec(const std::vector<double> &, const std::vector<double> &);
   std::vector<double> vec_matmul(const std::vector<double> &,const std::vector<std::vector<double>> &);
-<<<<<<< HEAD
   double vec_dot(const std::vector<double> &,const std::vector<double> &);
   double vec_norm(const std::vector<double> &);
   std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
 
   std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
-=======
-
-  
-
->>>>>>> 05aafd29b556f74abf5b6ab3f7c24815b7bf4fff
 
   void site_event_linear(int, class RandomPark *);
   void site_event_nonlinear(int, class RandomPark *);

@@ -28,7 +28,7 @@
 #include <vector>
 #include <array>
 #include <cmath>
-
+#include <bits/stdc++.h>
 #include "json.hpp"
 #include <fstream>
 using json = nlohmann::json;
@@ -624,12 +624,16 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   int num_occupied_sites = 0;
   int arr_size = maxneigh+maxneigh*maxneigh+maxneigh*maxneigh*maxneigh;
   int occupied_sites[arr_size];
+  std::map<int,int>neighbor_check;
   nhop1 = 0;
-  neigh_check[i]=1;
-
+  neighbor_check[i] = 1;
+  // Check for neighbors of site i that are occupied
+  // and store their coordinates in occupied_coords
+  // And identify possible vacancy sites and store them in hopsite
   for (l=0; l<numneigh[i];l++){
     m = neighbor[i][l];
-    if (lattice[m]==OCCUPIED && neigh_check[m] == 0){
+    std::cout << "Checking neighbor: " << m << std::endl;
+    if (lattice[m]==OCCUPIED && neighbor_check[m] == 0){
       for(o = 0; o<3; o++){
         local_coord[o] = xyz[m][o] - xyz[i][o];
       }
@@ -640,11 +644,11 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     else if (lattice[m]==VACANT){
       hopsite[nhop1++] = m;
     }
-    neigh_check[m] = 1;
+    neighbor_check[m] = 1; // Marking the neighbor as checked
     for (ll=0; ll<maxneigh; ll++){
         mm = neighbor[m][ll];
        
-        if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
+        if (lattice[mm] == OCCUPIED && neighbor_check[mm] == 0){
           for(o = 0; o<3; o++){
             local_coord[o] = xyz[mm][o] - xyz[i][o];
           }
@@ -652,10 +656,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
           occupied_sites[num_occupied_sites] = mm;
           num_occupied_sites++;
         }
-        neigh_check[mm] = 1;  // Setting the neighbor check for the second layer
+        neighbor_check[mm] = 1;  // Setting the neighbor check for the second layer
         for (lll=0; lll<maxneigh; lll++){
           mmm = neighbor[mm][lll];
-          if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
+          if (lattice[mmm]==OCCUPIED && neighbor_check[mmm]==0){
             for(o = 0; o<3; o++){
               local_coord[o] = xyz[mmm][o] - xyz[i][o];
             }
@@ -663,10 +667,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             occupied_sites[num_occupied_sites] = mmm;
             num_occupied_sites++;
           }
-          neigh_check[mmm] = 1;
+          neighbor_check[mmm] = 1;
           for (llll=0; llll<maxneigh; llll++){
             mmmm = neighbor[mmm][llll];
-            if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
+            if (lattice[mmmm]==OCCUPIED && neighbor_check[mmmm]==0){
               for(o = 0; o<3; o++){
                 local_coord[o] = xyz[mmmm][o] - xyz[i][o];
               }
@@ -674,16 +678,14 @@ double AppDiffusionCustom::site_propensity_linear(int i)
               occupied_sites[num_occupied_sites] = mmmm;
               num_occupied_sites++;
             }
-            neigh_check[mmmm] = 1;
+            neighbor_check[mmmm] = 1;
           }
         }
     }
   }
   // Reversing back the changes and consider the periodicity
-  neigh_check[i]=0;
   for(l=0; l<num_occupied_sites; l++){
     m = occupied_sites[l];
-    neigh_check[m] = 0;
     for(o = 0; o<3; o++){
       dist = occupied_coords[l][o];
       if (dist>4){
@@ -697,15 +699,16 @@ double AppDiffusionCustom::site_propensity_linear(int i)
       }
     }
   }
-  
+  // Calculate the probabilities of hopping from site i to j
+  // and add them to the event list
   proball = 0.0;
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
-      eflag = NNHOP;
-      eb = calculate_barrier_energy(i,j,occupied_coords);
-      probone = exp(-eb/temperature)*(NUHOP);
-      add_event(i,j,probone,eflag);
-      proball += probone;
+    eflag = NNHOP;
+    eb = calculate_barrier_energy(i,j,occupied_coords);
+    probone = (NUHOP)*exp(-eb*t_inverse);
+    add_event(i,j,probone,eflag);
+    proball += probone;
  }
 
   if (i == 0 && depmode != DEP_NONE) {
@@ -927,6 +930,8 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
     a1_2.insert(a1_2.end(), a5_2.begin(), a5_2.end());
     std::vector<double> z3 = add_vec(vec_matmul(a1_2, w6), b6[0]);
 
+
+  // Code for diagnosis purpose
   // double sum= 0.0;
   // for(l=0; l<11; l++){
   //   sum += first_shell[l]*2;
