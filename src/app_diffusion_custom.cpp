@@ -632,7 +632,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   // And identify possible vacancy sites and store them in hopsite
   for (l=0; l<numneigh[i];l++){
     m = neighbor[i][l];
-    std::cout << "Checking neighbor: " << m << std::endl;
+    
     if (lattice[m]==OCCUPIED && neighbor_check[m] == 0){
       for(o = 0; o<3; o++){
         local_coord[o] = xyz[m][o] - xyz[i][o];
