@@ -48,7 +48,7 @@ class AppDiffusionCustom : public AppLattice {
   int engstyle,hopstyle;
   int allocated;
   int *esites,*psites;
-  int *echeck,*pcheck, *neigh_check;
+  int *echeck,*pcheck;
   double *ecoord;
   double *box_dims;
   std::vector<std::vector<double>> first;

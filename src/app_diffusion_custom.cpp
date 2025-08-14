@@ -139,7 +139,7 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
 
 
   esites = psites = NULL;
-  echeck = pcheck = neigh_check =  NULL;
+  echeck = pcheck  =  NULL;
   maxevent = 0;
   events = NULL;
   firstevent = NULL;
@@ -183,7 +183,6 @@ AppDiffusionCustom::~AppDiffusionCustom()
   delete [] psites;
   delete [] echeck;
   delete [] pcheck;
-  delete [] neigh_check;
   delete [] box_dims;
   // Destroy vectors
   first.clear();
@@ -404,7 +403,7 @@ void AppDiffusionCustom::init_app()
 
 void AppDiffusionCustom::setup_app()
 {
-  for (int i = 0; i < nlocal+nghost; i++) echeck[i] = pcheck[i] = neigh_check[i] = 0;
+  for (int i = 0; i < nlocal+nghost; i++) echeck[i] = pcheck[i] = 0;
 
   // clear event list
 
@@ -1755,7 +1754,6 @@ void AppDiffusionCustom::allocate_data()
 
   echeck = new int[nlocal+nghost];
   pcheck = new int[nlocal+nghost];
-  neigh_check = new int[nlocal+nghost];
 
   memory->create(firstevent,nlocal,"app:firstevent");
 
