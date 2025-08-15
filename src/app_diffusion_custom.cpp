@@ -599,16 +599,8 @@ double AppDiffusionCustom::site_propensity_no_energy(int i)
 double AppDiffusionCustom::site_propensity_linear(int i)
 {
   int j,ihop,nhop1,nhop2,eflag;
-  double einitial,edelta,probone,proball;
-  double eb;  // Energy barrier
+  double probone,proball, eb;
 
-  // events = OCCUPIED site exchanges with adjacent VACANT site
-  // if engstyle, compute edelta between initial and final state
-  // factor of 2 in edelta accounts for energy change of neighbors of I,J
-  // if barrierflag, compute coordination of sites I,J
-  // for 1st neigh hop, set delta = 1 to remove hopping atom itself
-  // propensity is function of edelta, barrier, up/down hill, temperature
-  // std::cout << "Site propensity for "<< i << std::endl;
   clear_events(i);
 
   if (lattice[i] != OCCUPIED) {
@@ -618,18 +610,13 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     } else return 0.0;
   }
  
-  std::vector<std::vector<double>> occupied_coords;
-  std::vector<double> local_coord(3); // Create a vector to store coordinates
-
+  
   int l, m, o ;
   double dist;
   int ll, mm, lll, mmm,llll,mmmm;
   int num_occupied_sites = 0;
-  int arr_size = maxneigh+maxneigh*maxneigh+maxneigh*maxneigh*maxneigh;
-  int occupied_sites[arr_size];
-  // std::map<int,int>neigh_check;
+  std::vector<std::vector<double>> occupied_coords(128,std::vector<double>(3,0.0));
   nhop1 = 0;
-  // neighbor_check[i] = 1;
   neigh_check[i] = 1; // Marking the site i as checked
   // Check for neighbors of site i that are occupied
   // and store their coordinates in occupied_coords
@@ -638,10 +625,9 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     m = neighbor[i][l];
     if (lattice[m]==OCCUPIED && neigh_check[m] == 0){
       for(o = 0; o<3; o++){
-        local_coord[o] = xyz[m][o] - xyz[i][o];
+        occupied_coords[num_occupied_sites][o] = xyz[m][o] - xyz[i][o];
       }
-      occupied_coords.push_back(local_coord); 
-      occupied_sites[num_occupied_sites] = m;
+      
       num_occupied_sites++;
     }
     else if (lattice[m]==VACANT){
@@ -650,13 +636,11 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     neigh_check[m] = 1; // Marking the neighbor as checked
     for (ll=0; ll<maxneigh; ll++){
         mm = neighbor[m][ll];
-       
+
         if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
           for(o = 0; o<3; o++){
-            local_coord[o] = xyz[mm][o] - xyz[i][o];
+            occupied_coords[num_occupied_sites][o] = xyz[mm][o] - xyz[i][o];
           }
-          occupied_coords.push_back(local_coord);
-          occupied_sites[num_occupied_sites] = mm;
           num_occupied_sites++;
         }
         neigh_check[mm] = 1;  // Setting the neighbor check for the second layer
@@ -664,10 +648,8 @@ double AppDiffusionCustom::site_propensity_linear(int i)
           mmm = neighbor[mm][lll];
           if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
             for(o = 0; o<3; o++){
-              local_coord[o] = xyz[mmm][o] - xyz[i][o];
+              occupied_coords[num_occupied_sites][o] = xyz[mmm][o] - xyz[i][o];
             }
-            occupied_coords.push_back(local_coord);
-            occupied_sites[num_occupied_sites] = mmm;
             num_occupied_sites++;
           }
           neigh_check[mmm] = 1;
@@ -675,10 +657,8 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             mmmm = neighbor[mmm][llll];
             if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
               for(o = 0; o<3; o++){
-                local_coord[o] = xyz[mmmm][o] - xyz[i][o];
+                occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xyz[i][o];
               }
-              occupied_coords.push_back(local_coord);
-              occupied_sites[num_occupied_sites] = mmmm;
               num_occupied_sites++;
             }
             neigh_check[mmmm] = 1;
@@ -688,18 +668,11 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   }
   // Reversing back the changes and consider the periodicity
   for(l=0; l<num_occupied_sites; l++){
-    m = occupied_sites[l];
     for(o = 0; o<3; o++){
       dist = occupied_coords[l][o];
-      if (dist>4){
-        occupied_coords[l][o] = dist- box_dims[o] ;
-      }
-      else if (dist<-4){
-        occupied_coords[l][o] = dist + box_dims[o];
-      }
-      else{
-        occupied_coords[l][o] = dist;
-      }
+      if (dist>4) dist-=box_dims[o];
+      else if (dist<-4) dist+=box_dims[o];
+      occupied_coords[l][o] = dist;
     }
   }
   // Calculate the probabilities of hopping from site i to j
@@ -708,7 +681,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
     eflag = NNHOP;
-    eb = calculate_barrier_energy(i,j,occupied_coords);
+    eb = calculate_barrier_energy(i,j,occupied_coords,num_occupied_sites);
     probone = (NUHOP)*exp(-eb*t_inverse);
     add_event(i,j,probone,eflag);
     proball += probone;
@@ -762,7 +735,7 @@ std::vector<double> AppDiffusionCustom::mat_vecmul(const std::vector<std::vector
 
 
 
-double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<std::vector <double>> &local_coords){
+double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<std::vector <double>> &local_coords, int num_occupied_sites){
 
   int k, kk, o, flag,l;
   double x , y,z, dist;
@@ -781,11 +754,8 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
   std::vector<std::vector<double>> original_cs = {{1,0,0}, {0,1,0}, {0,0,1}};
   std::vector<std::vector<double>> rotated_cs(3,std::vector<double>(3,0));
 
-  std::vector<std::vector<double>> rotated_coords(local_coords.size(), std::vector<double>(3,0));
+  std::vector<std::vector<double>> rotated_coords(num_occupied_sites, std::vector<double>(3,0));
 
-
-
-  
   for ( o=0; o<3; o++){
     new_x[o] = xyz[j][o] - xyz[i][o];
     if (new_x[o]>4){
@@ -816,13 +786,13 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
     }
   }
   // Rotating the local coordinates with R
-  for ( k = 0; k<local_coords.size();k++){
+  for ( k = 0; k<num_occupied_sites;k++){
     rotated_coords[k] = mat_vecmul(R,local_coords[k]);
   }
 
   //Checking the occupancy of the local coordinates
 
-  for (k =0; k<local_coords.size();k++){
+  for (k =0; k<num_occupied_sites;k++){
     for (kk=0;kk<first_shell.size();kk++){
       flag=1;
       for(o=0; o<3;o++){

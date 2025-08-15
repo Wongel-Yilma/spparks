@@ -142,7 +142,7 @@ class AppDiffusionCustom : public AppLattice {
   double site_propensity_nonlinear(int);
   
   // Custom rate calculator
-  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &);
+  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, int );
   std::vector<double> relu(std::vector<double> &);
   std::vector<double> add_vec(const std::vector<double> &, const std::vector<double> &);
   std::vector<double> vec_matmul(const std::vector<double> &,const std::vector<std::vector<double>> &);
