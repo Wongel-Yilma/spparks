@@ -149,6 +149,8 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   hbarrier = sbarrier = NULL;
   ecoord = NULL;
   hopsite = NULL;
+  neigh_check = NULL;
+
   marklist = NULL;
   mark = NULL;
 
@@ -202,6 +204,8 @@ AppDiffusionCustom::~AppDiffusionCustom()
   delete [] ecoord;
 
   delete [] hopsite;
+  delete [] neigh_check;
+
   delete [] marklist;
   memory->destroy(mark);
 
@@ -623,16 +627,16 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   int num_occupied_sites = 0;
   int arr_size = maxneigh+maxneigh*maxneigh+maxneigh*maxneigh*maxneigh;
   int occupied_sites[arr_size];
-  std::map<int,int>neighbor_check;
+  // std::map<int,int>neigh_check;
   nhop1 = 0;
-  neighbor_check[i] = 1;
+  // neighbor_check[i] = 1;
+  neigh_check[i] = 1; // Marking the site i as checked
   // Check for neighbors of site i that are occupied
   // and store their coordinates in occupied_coords
   // And identify possible vacancy sites and store them in hopsite
   for (l=0; l<numneigh[i];l++){
     m = neighbor[i][l];
-    
-    if (lattice[m]==OCCUPIED && neighbor_check[m] == 0){
+    if (lattice[m]==OCCUPIED && neigh_check[m] == 0){
       for(o = 0; o<3; o++){
         local_coord[o] = xyz[m][o] - xyz[i][o];
       }
@@ -643,11 +647,11 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     else if (lattice[m]==VACANT){
       hopsite[nhop1++] = m;
     }
-    neighbor_check[m] = 1; // Marking the neighbor as checked
+    neigh_check[m] = 1; // Marking the neighbor as checked
     for (ll=0; ll<maxneigh; ll++){
         mm = neighbor[m][ll];
        
-        if (lattice[mm] == OCCUPIED && neighbor_check[mm] == 0){
+        if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
           for(o = 0; o<3; o++){
             local_coord[o] = xyz[mm][o] - xyz[i][o];
           }
@@ -655,10 +659,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
           occupied_sites[num_occupied_sites] = mm;
           num_occupied_sites++;
         }
-        neighbor_check[mm] = 1;  // Setting the neighbor check for the second layer
+        neigh_check[mm] = 1;  // Setting the neighbor check for the second layer
         for (lll=0; lll<maxneigh; lll++){
           mmm = neighbor[mm][lll];
-          if (lattice[mmm]==OCCUPIED && neighbor_check[mmm]==0){
+          if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
             for(o = 0; o<3; o++){
               local_coord[o] = xyz[mmm][o] - xyz[i][o];
             }
@@ -666,10 +670,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             occupied_sites[num_occupied_sites] = mmm;
             num_occupied_sites++;
           }
-          neighbor_check[mmm] = 1;
+          neigh_check[mmm] = 1;
           for (llll=0; llll<maxneigh; llll++){
             mmmm = neighbor[mmm][llll];
-            if (lattice[mmmm]==OCCUPIED && neighbor_check[mmmm]==0){
+            if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
               for(o = 0; o<3; o++){
                 local_coord[o] = xyz[mmmm][o] - xyz[i][o];
               }
@@ -677,7 +681,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
               occupied_sites[num_occupied_sites] = mmmm;
               num_occupied_sites++;
             }
-            neighbor_check[mmmm] = 1;
+            neigh_check[mmmm] = 1;
           }
         }
     }
@@ -714,7 +718,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     add_event(i,-1,deprate,DEPOSITION);
     proball += deprate;
   }
-
+  // Reset the neigh_check array for the next site
+  for (int i = 0; i < nlocal + nghost; i++) {
+    neigh_check[i] = 0;
+  }
   return proball;
 }
 
@@ -1768,6 +1775,8 @@ void AppDiffusionCustom::allocate_data()
       hbarrier[i][j] = sbarrier[i][j] = 0.0;
 
   hopsite = new int[maxneigh*maxneigh + maxneigh];
+  neigh_check = new int[nlocal +nghost];
+
   marklist = new int[maxneigh*maxneigh];
 
   mark = NULL;

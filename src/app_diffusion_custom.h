@@ -57,7 +57,7 @@ class AppDiffusionCustom : public AppLattice {
   std::vector<std::vector<double>> fourth;
   std::vector<std::vector<double>> fifth;
   std::vector<std::vector<double>> destinations;
-  std::ofstream csv_file; // File stream for writing to CSV
+  // std::ofstream csv_file; // For Diagnosis File stream for writing to CSV
 
   std::vector<std::vector<double>> w1_1;
   std::vector<std::vector<double>> w1_2 ;
@@ -101,6 +101,7 @@ class AppDiffusionCustom : public AppLattice {
 
   int nsmax,nsmin;          // Schwoebel hop params
   int *hopsite;             // list of possible hops for one site
+  int *neigh_check;         // list of neighbors 
   int *mark;                // flagged sites
   int *marklist;            // list of flagged sites
 
