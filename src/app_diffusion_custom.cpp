@@ -66,35 +66,28 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   // parse arguments
 
   if (narg < 3) error->all(FLERR,"Illegal app_style command");
-  if (strcmp(arg[1],"off") == 0) engstyle = NO_ENERGY;
-  else if (strcmp(arg[1],"linear") == 0) engstyle = LINEAR;
-  else if (strcmp(arg[1],"nonlinear") == 0) engstyle = NONLINEAR;
-  else error->all(FLERR,"Illegal app_style command");
-
+  // if (strcmp(arg[1],"off") == 0) engstyle = NO_ENERGY;
+  // else if (strcmp(arg[1],"linear") == 0) engstyle = LINEAR;
+  // else if (strcmp(arg[1],"nonlinear") == 0) engstyle = NONLINEAR;
+  // else error->all(FLERR,"Illegal app_style command");
+  nn = std::stoi(arg[1]);
+  engstyle = LINEAR; // Only linear energy is supported for now
   if (strcmp(arg[2],"hop") == 0) {
     // if (narg != 3) error->all(FLERR,"Illegal app_style command");
     hopstyle = NNHOP;
-  } else if (strcmp(arg[2],"schwoebel") == 0) {
-    if (narg != 5) error->all(FLERR,"Illegal app_style command");
-    hopstyle = SCHWOEBEL;
-    nsmax = atoi(arg[3]);
-    nsmin = atoi(arg[4]);
-  } else error->all(FLERR,"Illegal app_style command");
+  } else error->all(FLERR,"Illegal app_style command: only nearest-neighbor hop is supported");
 
   // increment delpropensity by 1 for nonlinear energy
   // increment delpropensity and delevent by 1 for Schwoebel hops
   // change allow_rejection to 1 for linear energy and non-Schwoebel hops
 
-  if (engstyle == NONLINEAR) delpropensity++;
-  if (hopstyle == SCHWOEBEL) delpropensity++;
-  if (hopstyle == SCHWOEBEL) delevent++;
-  if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
-
+  // if (engstyle == NONLINEAR) delpropensity++;
+  // if (hopstyle == SCHWOEBEL) delpropensity++;
+  // if (hopstyle == SCHWOEBEL) delevent++;
+  // if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
+  allow_rejection = 1;
   create_arrays();
 
-
-  
-  
   std::ifstream in2(arg[3]);
   json json_file_1;
   in2 >> json_file_1;
@@ -135,8 +128,6 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   in.close();
 
   // csv_file.open(arg[5], std::ios::app); // Open file in append mode
-
-
 
   esites = psites = NULL;
   echeck = pcheck  =  NULL;
@@ -421,6 +412,7 @@ void AppDiffusionCustom::setup_app()
    compute energy of site
 ------------------------------------------------------------------------- */
 
+
 double AppDiffusionCustom::site_energy(int i)
 {
   // energy only non-zero for OCCUPIED sites when energy included in model
@@ -450,7 +442,6 @@ double AppDiffusionCustom::site_energy(int i)
    perform a site event with null bin rejection
    null bin extends to size maxneigh
 ------------------------------------------------------------------------- */
-
 void AppDiffusionCustom::site_event_rejection(int i, RandomPark *random)
 {
   double einitial,edelta;
@@ -515,83 +506,7 @@ void AppDiffusionCustom::site_event_rejection(int i, RandomPark *random)
 
 double AppDiffusionCustom::site_propensity(int i)
 {
-  if (engstyle == NO_ENERGY) return site_propensity_no_energy(i);
-  else if (engstyle == LINEAR) return site_propensity_linear(i);
-  // else return site_propensity_nonlinear(i);
-}
-
-/* ---------------------------------------------------------------------- */
-
-double AppDiffusionCustom::site_propensity_no_energy(int i)
-{
-  int j,ihop,nhop1,nhop2,eflag;
-  double probone,proball;
-
-  // events = OCCUPIED site exchanges with adjacent VACANT site
-  // if engstyle, compute edelta between initial and final state
-  // factor of 2 in edelta accounts for energy change of neighbors of I,J
-  // if barrierflag, compute coordination of sites I,J
-  // for 1st neigh hop, set delta = 1 to remove hopping atom itself
-  // propensity is function of edelta, barrier, up/down hill, temperature
-
-  clear_events(i);
-
-  if (lattice[i] != OCCUPIED) {
-    if (i == 0 && depmode != DEP_NONE) {
-      add_event(i,-1,deprate,DEPOSITION);
-      return deprate;
-    } else return 0.0;
-  }
-
-  // nhop1 = 1st neigh hops, nhop2 = 2nd neigh hops
-  // hopsite = all possible hop sites
-
-  nhop1 = 0;
-  for (j = 0; j < numneigh[i]; j++)
-    if (lattice[neighbor[i][j]] == VACANT) hopsite[nhop1++] = neighbor[i][j];
-  nhop2 = nhop1;
-  if (hopstyle == SCHWOEBEL) 
-    nhop2 += schwoebel_enumerate(i,&hopsite[nhop1]);
-
-  // loop over all possible hops
-
-  proball = 0.0;
-  double **barrier = hbarrier;
-  int delta = 1;
-
-  for (ihop = 0; ihop < nhop2; ihop++) {
-    j = hopsite[ihop];
-    if (ihop == nhop1) {
-      barrier = sbarrier;
-      delta = 0;
-    }
-
-    lattice[i] = VACANT;
-    lattice[j] = OCCUPIED;
-    probone = 0.0;
-
-    if (!barrierflag) probone = 1.0;
-    else if (temperature > 0.0)
-      probone = exp(-barrier[ncoord(i)-delta][ncoord(j)]*t_inverse);
-    
-    if (probone > 0.0) {
-      eflag = (ihop < nhop1) ? NNHOP : SCHWOEBEL;
-      add_event(i,j,probone,eflag);
-      proball += probone;
-    }
-    
-    lattice[i] = OCCUPIED;
-    lattice[j] = VACANT;
-  }
-
-  // add in single deposition event, stored by site 0
-
-  if (i == 0 && depmode != DEP_NONE) {
-    add_event(i,-1,deprate,DEPOSITION);
-    proball += deprate;
-  }
-
-  return proball;
+  return site_propensity_linear(i);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -600,6 +515,12 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 {
   int j,ihop,nhop1,nhop2,eflag;
   double probone,proball, eb;
+  std::size_t l,ll,lll,llll,o;
+  int m;
+  double dist;
+  int  mm,mmm,mmmm;
+  int num_occupied_sites = 0;
+  std::vector<std::vector<double>> occupied_coords(128,std::vector<double>(3,0.0));
 
   clear_events(i);
 
@@ -610,12 +531,6 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     } else return 0.0;
   }
  
-  
-  int l, m, o ;
-  double dist;
-  int ll, mm, lll, mmm,llll,mmmm;
-  int num_occupied_sites = 0;
-  std::vector<std::vector<double>> occupied_coords(128,std::vector<double>(3,0.0));
   nhop1 = 0;
   neigh_check[i] = 1; // Marking the site i as checked
   // Check for neighbors of site i that are occupied
@@ -666,12 +581,13 @@ double AppDiffusionCustom::site_propensity_linear(int i)
         }
     }
   }
-  // Reversing back the changes and consider the periodicity
+  // consider the periodicity, if the distance is greater than half the box dimension,
+  // adjust the distance to account for periodic boundary conditions
   for(l=0; l<num_occupied_sites; l++){
     for(o = 0; o<3; o++){
       dist = occupied_coords[l][o];
-      if (dist>4) dist-=box_dims[o];
-      else if (dist<-4) dist+=box_dims[o];
+      if (dist>box_dims[o] * 0.5) dist-=box_dims[o];
+      else if (dist<-box_dims[o] * 0.5) dist+=box_dims[o];
       occupied_coords[l][o] = dist;
     }
   }
@@ -686,19 +602,19 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     add_event(i,j,probone,eflag);
     proball += probone;
  }
-
   if (i == 0 && depmode != DEP_NONE) {
     add_event(i,-1,deprate,DEPOSITION);
     proball += deprate;
   }
   // Reset the neigh_check array for the next site
-  for (int i = 0; i < nlocal + nghost; i++) {
-    neigh_check[i] = 0;
-  }
+  for ( l = 0; l < nlocal + nghost; l++) neigh_check[l] = 0;
   return proball;
 }
 
 /* ---------------------------------------------------------------------- */
+//    Helper functions to perform vector and matrix operations
+/* ---------------------------------------------------------------------- */
+
 
 double AppDiffusionCustom::vec_dot(const std::vector<double> &a,const std::vector<double> &b){
   double c = a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
@@ -733,10 +649,58 @@ std::vector<double> AppDiffusionCustom::mat_vecmul(const std::vector<std::vector
 }
 
 
+std::vector<double> AppDiffusionCustom::relu(std::vector<double> &z){
+  std::vector <double> a(z.size());
+  int l;
+  for (l = 0; l<z.size();l++){
+    if (z[l] < 0){
+      a[l] = 0;
+    }
+    else{
+      a[l] = z[l];
+    }
+  }
+  return a;
+}
 
 
+std::vector<double> AppDiffusionCustom::add_vec(const std::vector<double> &a, const std::vector<double> &b){
+  if (a.size() != b.size()){
+      throw std::invalid_argument("Vectors must be of the same size");
+  }
+  std::vector<double> c(a.size());
+  for (int k = 0; k<a.size();k++){
+      c[k] = a[k] + b[k];
+  }
+  return c;
+}
+
+
+std::vector<double> AppDiffusionCustom::vec_matmul(const std::vector<double> &a,const std::vector<std::vector<double>> &B){
+  
+  int m = a.size();
+  int p = B.size();
+  int q = B[0].size();
+  int k, l;
+  
+  if (m !=p){
+      throw std::invalid_argument("Matrix dimensions do not match for multiplication");
+  }
+  std::vector<double> c(q,0.0);
+  for (int l =0; l<q;l++){
+      for(int k=0; k<m; k++){
+          c[l] += a[k] * B[k][l];
+      }
+  }
+  return c;
+}
+
+/* ---------------------------------------------------------------------- */
+//    Main function to calculate the barrier energy using the NN-model provided by the user
+/* ---------------------------------------------------------------------- */
 double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<std::vector <double>> &local_coords, int num_occupied_sites){
-
+  // Calculate the barrier energy for the hop from site i to site j
+  // using the local coordinates of the occupied sites
   int k, kk, o, flag,l;
   double x , y,z, dist;
   double n_occupied=0.0;
@@ -937,53 +901,6 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
   return z3[0];
 }
 
-std::vector<double> AppDiffusionCustom::relu(std::vector<double> &z){
-  std::vector <double> a(z.size());
-  int l;
-  for (l = 0; l<z.size();l++){
-    if (z[l] < 0){
-      a[l] = 0;
-    }
-    else{
-      a[l] = z[l];
-    }
-  }
-  return a;
-}
-
-
-std::vector<double> AppDiffusionCustom::add_vec(const std::vector<double> &a, const std::vector<double> &b){
-  if (a.size() != b.size()){
-      throw std::invalid_argument("Vectors must be of the same size");
-  }
-  std::vector<double> c(a.size());
-  for (int k = 0; k<a.size();k++){
-      c[k] = a[k] + b[k];
-  }
-  return c;
-}
-
-
-std::vector<double> AppDiffusionCustom::vec_matmul(const std::vector<double> &a,const std::vector<std::vector<double>> &B){
-  
-  int m = a.size();
-  int p = B.size();
-  int q = B[0].size();
-  int k, l;
-  
-  if (m !=p){
-      throw std::invalid_argument("Matrix dimensions do not match for multiplication");
-  }
-  std::vector<double> c(q,0.0);
-  for (int l =0; l<q;l++){
-      for(int k=0; k<m; k++){
-          c[l] += a[k] * B[k][l];
-      }
-  }
-  return c;
-}
-
-
 
 
 /* ----------------------------------------------------------------------
@@ -993,8 +910,7 @@ std::vector<double> AppDiffusionCustom::vec_matmul(const std::vector<double> &a,
 
 void AppDiffusionCustom::site_event(int i, class RandomPark *random)
 {
-  if (engstyle == NO_ENERGY || engstyle == LINEAR)
-    return site_event_linear(i,random);
+  return site_event_linear(i,random);
 }
 
 /* ---------------------------------------------------------------------- */

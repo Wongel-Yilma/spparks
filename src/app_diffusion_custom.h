@@ -46,6 +46,7 @@ class AppDiffusionCustom : public AppLattice {
 
  private:
   int engstyle,hopstyle;
+  int nn;
   int allocated;
   int *esites,*psites;
   int *echeck,*pcheck;
