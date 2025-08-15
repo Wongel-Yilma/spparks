@@ -81,11 +81,10 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   // increment delpropensity and delevent by 1 for Schwoebel hops
   // change allow_rejection to 1 for linear energy and non-Schwoebel hops
 
-  // if (engstyle == NONLINEAR) delpropensity++;
-  // if (hopstyle == SCHWOEBEL) delpropensity++;
-  // if (hopstyle == SCHWOEBEL) delevent++;
-  // if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
-  allow_rejection = 1;
+  if (engstyle == LINEAR) delpropensity++;
+  if (hopstyle == NNHOP) delpropensity++;
+  if (hopstyle == NNHOP) delevent++;
+  if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
   create_arrays();
 
   std::ifstream in2(arg[3]);
@@ -996,22 +995,35 @@ void AppDiffusionCustom::update_propensities(int i, int j)
     }
   }
 
-  if (engstyle != NONLINEAR) {
-    if (hopstyle == NNHOP) {
-      nsites += neighbor2(i,&esites[nsites]);
+  // if (engstyle != NONLINEAR) {
+  //   if (hopstyle == NNHOP) {
+  //     nsites += neighbor2(i,&esites[nsites]);
+  //     if (j != i) nsites += neighbor2(j,&esites[nsites]);
+  //   } else {
+  //     nsites += neighbor3(i,&esites[nsites]);
+  //     if (j != i) nsites += neighbor3(j,&esites[nsites]);
+  //   }
+  // } else {
+  //   if (hopstyle == NNHOP) {
+  //     nsites += neighbor3(i,&esites[nsites]);
+  //     if (j != i) nsites += neighbor3(j,&esites[nsites]);
+  //   } else {
+  //     nsites += neighbor4(i,&esites[nsites]);
+  //     if (j != i) nsites += neighbor4(j,&esites[nsites]);
+  //   }
+  // }
+  
+  if (nn==2){
+    nsites += neighbor2(i,&esites[nsites]);
       if (j != i) nsites += neighbor2(j,&esites[nsites]);
-    } else {
-      nsites += neighbor3(i,&esites[nsites]);
+  }
+  else if (nn==3){
+    nsites += neighbor3(i,&esites[nsites]);
       if (j != i) nsites += neighbor3(j,&esites[nsites]);
-    }
-  } else {
-    if (hopstyle == NNHOP) {
-      nsites += neighbor3(i,&esites[nsites]);
-      if (j != i) nsites += neighbor3(j,&esites[nsites]);
-    } else {
-      nsites += neighbor4(i,&esites[nsites]);
+  }
+  else if (nn>=4){
+    nsites += neighbor4(i,&esites[nsites]);
       if (j != i) nsites += neighbor4(j,&esites[nsites]);
-    }
   }
 
   // reset propensities of all affected sites within solver
@@ -1624,9 +1636,14 @@ void AppDiffusionCustom::allocate_data()
   // Schwoebel hops add one level of neighbor dependence to esites
 
   if ((engstyle == NO_ENERGY || engstyle == LINEAR) && hopstyle == NNHOP) {
-    int emax = 1 + maxneigh + maxneigh*maxneigh;
+    // int emax = 1 + maxneigh + maxneigh*maxneigh;
+    // esites = new int[2*emax];
+    // psites = NULL;
+    int emax = 1 + maxneigh + maxneigh*maxneigh + 
+      maxneigh*maxneigh*maxneigh + maxneigh*maxneigh*maxneigh*maxneigh;
+    int pmax = 1 + maxneigh;
     esites = new int[2*emax];
-    psites = NULL;
+    psites = new int[2*pmax];
   } else if ((engstyle == NO_ENERGY || engstyle == LINEAR) && 
 	     hopstyle == SCHWOEBEL) {
     int emax = 1 + maxneigh + maxneigh*maxneigh + maxneigh*maxneigh*maxneigh;
