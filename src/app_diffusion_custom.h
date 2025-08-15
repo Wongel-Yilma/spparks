@@ -52,6 +52,7 @@ class AppDiffusionCustom : public AppLattice {
   int *echeck,*pcheck;
   double *ecoord;
   double *box_dims;
+  double *half_box_dims;
   std::vector<std::vector<double>> first;
   std::vector<std::vector<double>> second;
   std::vector<std::vector<double>> third;

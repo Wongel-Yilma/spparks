@@ -135,7 +135,7 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   events = NULL;
   firstevent = NULL;
   box_dims = NULL;
-
+  half_box_dims = NULL;
 
   hbarrier = sbarrier = NULL;
   ecoord = NULL;
@@ -177,6 +177,7 @@ AppDiffusionCustom::~AppDiffusionCustom()
   delete [] echeck;
   delete [] pcheck;
   delete [] box_dims;
+  delete [] half_box_dims;
   // Destroy vectors
   first.clear();
   second.clear();
@@ -515,12 +516,13 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 {
   int j,ihop,nhop1,nhop2,eflag;
   double probone,proball, eb;
-  std::size_t l,ll,lll,llll,o;
+  int l,ll,lll,llll,o;
   int m;
   double dist;
   int  mm,mmm,mmmm;
   int num_occupied_sites = 0;
   std::vector<std::vector<double>> occupied_coords(128,std::vector<double>(3,0.0));
+  std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};
 
   clear_events(i);
 
@@ -540,7 +542,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
     m = neighbor[i][l];
     if (lattice[m]==OCCUPIED && neigh_check[m] == 0){
       for(o = 0; o<3; o++){
-        occupied_coords[num_occupied_sites][o] = xyz[m][o] - xyz[i][o];
+        occupied_coords[num_occupied_sites][o] = xyz[m][o] - xi[0];
       }
       
       num_occupied_sites++;
@@ -554,7 +556,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 
         if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
           for(o = 0; o<3; o++){
-            occupied_coords[num_occupied_sites][o] = xyz[mm][o] - xyz[i][o];
+            occupied_coords[num_occupied_sites][o] = xyz[mm][o] - xi[0];
           }
           num_occupied_sites++;
         }
@@ -563,7 +565,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
           mmm = neighbor[mm][lll];
           if (lattice[mmm]==OCCUPIED && neigh_check[mmm]==0){
             for(o = 0; o<3; o++){
-              occupied_coords[num_occupied_sites][o] = xyz[mmm][o] - xyz[i][o];
+              occupied_coords[num_occupied_sites][o] = xyz[mmm][o] - xi[0];
             }
             num_occupied_sites++;
           }
@@ -572,7 +574,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             mmmm = neighbor[mmm][llll];
             if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
               for(o = 0; o<3; o++){
-                occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xyz[i][o];
+                occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xi[0];
               }
               num_occupied_sites++;
             }
@@ -586,8 +588,8 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   for(l=0; l<num_occupied_sites; l++){
     for(o = 0; o<3; o++){
       dist = occupied_coords[l][o];
-      if (dist>box_dims[o] * 0.5) dist-=box_dims[o];
-      else if (dist<-box_dims[o] * 0.5) dist+=box_dims[o];
+      if (dist>half_box_dims[o]) dist-=box_dims[o];
+      else if (dist<-half_box_dims[o]) dist+=box_dims[o];
       occupied_coords[l][o] = dist;
     }
   }
@@ -648,7 +650,6 @@ std::vector<double> AppDiffusionCustom::mat_vecmul(const std::vector<std::vector
   return c;
 }
 
-
 std::vector<double> AppDiffusionCustom::relu(std::vector<double> &z){
   std::vector <double> a(z.size());
   int l;
@@ -663,7 +664,6 @@ std::vector<double> AppDiffusionCustom::relu(std::vector<double> &z){
   return a;
 }
 
-
 std::vector<double> AppDiffusionCustom::add_vec(const std::vector<double> &a, const std::vector<double> &b){
   if (a.size() != b.size()){
       throw std::invalid_argument("Vectors must be of the same size");
@@ -674,7 +674,6 @@ std::vector<double> AppDiffusionCustom::add_vec(const std::vector<double> &a, co
   }
   return c;
 }
-
 
 std::vector<double> AppDiffusionCustom::vec_matmul(const std::vector<double> &a,const std::vector<std::vector<double>> &B){
   
@@ -704,6 +703,7 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
   int k, kk, o, flag,l;
   double x , y,z, dist;
   double n_occupied=0.0;
+  
   std::vector <double> first_shell(18,0.0);
   std::vector <double> second_shell(8,0.0);
   std::vector <double> third_shell(32,0.0);
@@ -1674,5 +1674,9 @@ void AppDiffusionCustom::allocate_data()
   box_dims[0] =  domain->boxxhi-domain->boxxlo;
   box_dims[1] = domain->boxyhi-domain->boxylo;
   box_dims[2] = domain->boxzhi-domain->boxzlo;
+  half_box_dims = new double[3];
+  half_box_dims[0] = box_dims[0] * 0.5;
+  half_box_dims[1] = box_dims[1] * 0.5;
+  half_box_dims[2] = box_dims[2] * 0.5;
 
 }
