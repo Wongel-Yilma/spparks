@@ -83,45 +83,8 @@ class AppDiffusionCustom : public AppLattice {
 
 
   // Matrices for neural network calculations
-  std::vector<double> first_shell;
-  std::vector<double> second_shell;
-  std::vector<double> third_shell;
-  std::vector<double> fourth_shell;
-  std::vector<double> fifth_shell;
+
   // Matrices for rotation
-  std::vector<std::vector<double>> original_cs;
-  std::vector<std::vector<double>> rotated_cs;
-  std::vector<std::vector<double>> R;
-
-  std::vector<double> new_x;
-  std::vector<double> new_y;
-  std::vector<double> new_z;
-  std::vector<std::vector<double>> rotated_coords;
-  std::vector<double> z1_1 ;
-  std::vector<double> z2_1 ;
-  std::vector<double> z3_1;
-  std::vector<double> z4_1;
-  std::vector<double> z5_1;
-
-
-  std::vector<double> a1_1;
-  std::vector<double> a2_1;
-  std::vector<double> a3_1;
-  std::vector<double> a4_1;
-  std::vector<double> a5_1;
-
-  std::vector<double> z1_2;
-  std::vector<double> z2_2;
-  std::vector<double> z3_2;
-  std::vector<double> z4_2;
-  std::vector<double> z5_2;
-
-  std::vector<double> a1_2;
-  std::vector<double> a2_2;
-  std::vector<double> a3_2;
-  std::vector<double> a4_2;
-  std::vector<double> a5_2;
-
 
   int dimension;
   int *lattice;
