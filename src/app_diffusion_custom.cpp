@@ -517,12 +517,16 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 {
   int j,ihop,nhop1,nhop2,eflag;
   double probone,proball, eb;
-  int l,ll,lll,llll,o;
+  int l,ll,lll,o;
+  // int l,ll,lll,llll,o;
+
   int m;
   double dist;
-  int  mm,mmm,mmmm;
+  int  mm,mmm;
+  // int  mm,mmm,mmmm;
+
   int num_occupied_sites = 0;
-  std::vector<std::vector<double>> occupied_coords(1024,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> occupied_coords(512,std::vector<double>(3,0.0));
   std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};
 
   clear_events(i);
@@ -570,16 +574,17 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             num_occupied_sites++;
           }
           neigh_check[mmm] = 1;
-          for (llll=0; llll<maxneigh; llll++){
-            mmmm = neighbor[mmm][llll];
-            if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
-              for(o = 0; o<3; o++){
-                occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xi[o];
-              }
-              num_occupied_sites++;
-            }
-            neigh_check[mmmm] = 1;
-          }
+          // Uncomment the following lines if you want to check for Fourth layer neighbors
+          // for (llll=0; llll<maxneigh; llll++){
+          //   mmmm = neighbor[mmm][llll];
+          //   if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
+          //     for(o = 0; o<3; o++){
+          //       occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xi[o];
+          //     }
+          //     num_occupied_sites++;
+          //   }
+          //   neigh_check[mmmm] = 1;
+          // }
         }
     }
   }
@@ -1055,15 +1060,15 @@ void AppDiffusionCustom::update_propensities(int i, int j)
   //   }
   // }
 
-  if (nn==2){
+  if(nn ==2 || nn==3){
     nsites += neighbor2(i,&esites[nsites]);
       if (j != i) nsites += neighbor2(j,&esites[nsites]);
   }
-  else if (nn==3){
+  else if (nn==4 || nn==5){
     nsites += neighbor3(i,&esites[nsites]);
       if (j != i) nsites += neighbor3(j,&esites[nsites]);
   }
-  else if (nn>=4){
+  else if (nn>=6){
     nsites += neighbor4(i,&esites[nsites]);
       if (j != i) nsites += neighbor4(j,&esites[nsites]);
   }
