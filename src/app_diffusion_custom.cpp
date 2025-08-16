@@ -522,7 +522,7 @@ double AppDiffusionCustom::site_propensity_linear(int i)
   double dist;
   int  mm,mmm,mmmm;
   int num_occupied_sites = 0;
-  std::vector<std::vector<double>> occupied_coords(200,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> occupied_coords(1024,std::vector<double>(3,0.0));
   std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};
 
   clear_events(i);
@@ -545,16 +545,15 @@ double AppDiffusionCustom::site_propensity_linear(int i)
       for(o = 0; o<3; o++){
         occupied_coords[num_occupied_sites][o] = xyz[m][o] - xi[o];
       }
-      
       num_occupied_sites++;
     }
+    // Possible hop sites are those that are VACANT
     else if (lattice[m]==VACANT){
       hopsite[nhop1++] = m;
     }
     neigh_check[m] = 1; // Marking the neighbor as checked
     for (ll=0; ll<maxneigh; ll++){
         mm = neighbor[m][ll];
-
         if (lattice[mm] == OCCUPIED && neigh_check[mm] == 0){
           for(o = 0; o<3; o++){
             occupied_coords[num_occupied_sites][o] = xyz[mm][o] - xi[o];
