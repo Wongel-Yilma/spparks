@@ -71,20 +71,21 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   // else if (strcmp(arg[1],"nonlinear") == 0) engstyle = NONLINEAR;
   // else error->all(FLERR,"Illegal app_style command");
   nn = std::stoi(arg[1]);
-  engstyle = LINEAR; // Only linear energy is supported for now
+  engstyle = NONLINEAR; // Only linear energy is supported for now
   if (strcmp(arg[2],"hop") == 0) {
     // if (narg != 3) error->all(FLERR,"Illegal app_style command");
-    hopstyle = NNHOP;
+    hopstyle = SCHWOEBEL;
   } else error->all(FLERR,"Illegal app_style command: only nearest-neighbor hop is supported");
 
   // increment delpropensity by 1 for nonlinear energy
   // increment delpropensity and delevent by 1 for Schwoebel hops
   // change allow_rejection to 1 for linear energy and non-Schwoebel hops
 
-  if (engstyle == LINEAR) delpropensity++;
-  if (hopstyle == NNHOP) delpropensity++;
-  if (hopstyle == NNHOP) delevent++;
+  if (engstyle == NONLINEAR) delpropensity++;
+  if (hopstyle == SCHWOEBEL) delpropensity++;
+  if (hopstyle == SCHWOEBEL) delevent++;
   if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
+
   create_arrays();
 
   std::ifstream in2(arg[3]);
@@ -166,7 +167,7 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   ndeposit = ndeposit_failed = 0;
   nfirst = nsecond = 0;
 
-  // Initialize the neural network parameters
+  
 }
 
 /* ---------------------------------------------------------------------- */
@@ -705,43 +706,48 @@ void AppDiffusionCustom::reset_matrices(){
   std::fill(third_shell.begin(), third_shell.end(), 0.0);
   std::fill(fourth_shell.begin(), fourth_shell.end(), 0.0);
   std::fill(fifth_shell.begin(), fifth_shell.end(), 0.0);
-  // std::fill(new_x.begin(), new_x.end(), 0.0);
-  // std::fill(new_y.begin(), new_y.end(), 0.0);
-  // std::fill(new_z.begin(), new_z.end(), 0.0);
+  std::fill(new_x.begin(), new_x.end(), 0.0);
+  std::fill(new_y.begin(), new_y.end(), 0.0);
+  std::fill(new_z.begin(), new_z.end(), 0.0);
   
-  // for (auto &row:rotated_cs){
-  //   std::fill(row.begin(), row.end(), 0.0);
-  // }
+  for (auto &row:rotated_cs){
+    std::fill(row.begin(), row.end(), 0.0);
+  }
   for (auto &coord:rotated_coords){
     std::fill(coord.begin(), coord.end(), 0.0);
   }
-  // std::fill(a1_1.begin(), a1_1.end(), 0.0);
-  // std::fill(a2_1.begin(), a2_1.end(), 0.0);
-  // std::fill(a3_1.begin(), a3_1.end(), 0.0);
-  // std::fill(a4_1.begin(), a4_1.end(), 0.0);
-  // std::fill(a5_1.begin(), a5_1.end(), 0.0);
+  std::vector<std::vector<double>> original_cs ={
+      {1.0, 0.0, 0.0},
+      {0.0, 1.0, 0.0},
+      {0.0, 0.0, 1.0}
+    };
+  std::fill(a1_1.begin(), a1_1.end(), 0.0);
+  std::fill(a2_1.begin(), a2_1.end(), 0.0);
+  std::fill(a3_1.begin(), a3_1.end(), 0.0);
+  std::fill(a4_1.begin(), a4_1.end(), 0.0);
+  std::fill(a5_1.begin(), a5_1.end(), 0.0);
 
-  // std::fill(z1_1.begin(), z1_1.end(), 0.0);
-  // std::fill(z2_1.begin(), z2_1.end(), 0.0);
-  // std::fill(z3_1.begin(), z3_1.end(), 0.0);
-  // std::fill(z4_1.begin(), z4_1.end(), 0.0);
-  // std::fill(z5_1.begin(), z5_1.end(), 0.0);
+  std::fill(z1_1.begin(), z1_1.end(), 0.0);
+  std::fill(z2_1.begin(), z2_1.end(), 0.0);
+  std::fill(z3_1.begin(), z3_1.end(), 0.0);
+  std::fill(z4_1.begin(), z4_1.end(), 0.0);
+  std::fill(z5_1.begin(), z5_1.end(), 0.0);
 
   a1_2.resize(9,0.0);
 
-  // std::fill(a1_2.begin(), a1_2.end(), 0.0);
-  // std::fill(a2_2.begin(), a2_2.end(), 0.0);
-  // std::fill(a3_2.begin(), a3_2.end(), 0.0);
-  // std::fill(a4_2.begin(), a4_2.end(), 0.0);
-  // std::fill(a5_2.begin(), a5_2.end(), 0.0);
+  std::fill(a1_2.begin(), a1_2.end(), 0.0);
+  std::fill(a2_2.begin(), a2_2.end(), 0.0);
+  std::fill(a3_2.begin(), a3_2.end(), 0.0);
+  std::fill(a4_2.begin(), a4_2.end(), 0.0);
+  std::fill(a5_2.begin(), a5_2.end(), 0.0);
 
-  // std::fill(z1_2.begin(), z1_2.end(), 0.0);
-  // std::fill(z2_2.begin(), z2_2.end(), 0.0);
-  // std::fill(z3_2.begin(), z3_2.end(), 0.0);
-  // std::fill(z4_2.begin(), z4_2.end(), 0.0);
-  // std::fill(z5_2.begin(), z5_2.end(), 0.0);
+  std::fill(z1_2.begin(), z1_2.end(), 0.0);
+  std::fill(z2_2.begin(), z2_2.end(), 0.0);
+  std::fill(z3_2.begin(), z3_2.end(), 0.0);
+  std::fill(z4_2.begin(), z4_2.end(), 0.0);
+  std::fill(z5_2.begin(), z5_2.end(), 0.0);
 }
-  */
+*/
 /* ---------------------------------------------------------------------- */
 //    Main function to calculate the barrier energy using the NN-model provided by the user
 /* ---------------------------------------------------------------------- */
@@ -767,7 +773,6 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
   std::vector<std::vector<double>> rotated_cs(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
-
 
   for ( o=0; o<3; o++){
     new_x[o] = xyz[j][o] - xyz[i][o];
@@ -882,32 +887,32 @@ double AppDiffusionCustom::calculate_barrier_energy(int i, int j, std::vector<st
   }
 
   // First layer matrix operations
-  std::vector<double>  z1_1 = add_vec(vec_matmul(first_shell, w1_1), b1[0]);
-  std::vector<double>  z2_1 = add_vec(vec_matmul(second_shell, w2_1), b2[0]);
-  std::vector<double>  z3_1 = add_vec( vec_matmul(third_shell, w3_1), b3[0]);
-  std::vector<double>  z4_1 = add_vec(vec_matmul(fourth_shell, w4_1), b4[0]);
-  std::vector<double>  z5_1 = add_vec(vec_matmul(fifth_shell, w5_1), b5[0]);
+  std::vector<double> z1_1 = add_vec(vec_matmul(first_shell, w1_1), b1[0]);
+  std::vector<double> z2_1 = add_vec(vec_matmul(second_shell, w2_1), b2[0]);
+  std::vector<double> z3_1 = add_vec(vec_matmul(third_shell, w3_1), b3[0]);
+  std::vector<double> z4_1 = add_vec(vec_matmul(fourth_shell, w4_1), b4[0]);
+  std::vector<double> z5_1 = add_vec(vec_matmul(fifth_shell, w5_1), b5[0]);
 
 
-  std::vector<double>  a1_1 = relu(z1_1);
-  std::vector<double>  a2_1 = relu(z2_1);
-  std::vector<double>  a3_1 = relu(z3_1);
-  std::vector<double>  a4_1 = relu(z4_1);
-  std::vector<double>  a5_1 = relu(z5_1);
+  std::vector<double> a1_1 = relu(z1_1);
+  std::vector<double> a2_1 = relu(z2_1);
+  std::vector<double> a3_1 = relu(z3_1);
+  std::vector<double> a4_1 = relu(z4_1);
+  std::vector<double> a5_1 = relu(z5_1);
 
   // Second layer matrix operations
 
-  std::vector<double>  z1_2 = add_vec(vec_matmul(a1_1, w1_2), b1[1]);
-  std::vector<double>  z2_2 = add_vec(vec_matmul(a2_1, w2_2), b2[1]);
-  std::vector<double>  z3_2 = add_vec(vec_matmul(a3_1, w3_2), b3[1]);
-  std::vector<double>  z4_2 = add_vec(vec_matmul(a4_1, w4_2), b4[1]);
-  std::vector<double>  z5_2 = add_vec(vec_matmul(a5_1, w5_2), b5[1]);
+  std::vector<double> z1_2 = add_vec(vec_matmul(a1_1, w1_2), b1[1]);
+  std::vector<double> z2_2 = add_vec(vec_matmul(a2_1, w2_2), b2[1]);
+  std::vector<double> z3_2 = add_vec(vec_matmul(a3_1, w3_2), b3[1]);
+  std::vector<double> z4_2 = add_vec(vec_matmul(a4_1, w4_2), b4[1]);
+  std::vector<double> z5_2 = add_vec(vec_matmul(a5_1, w5_2), b5[1]);
 
-  std::vector<double>  a1_2 = relu(z1_2);
-  std::vector<double>  a2_2 = relu(z2_2);
-  std::vector<double>  a3_2 = relu(z3_2);
-  std::vector<double>  a4_2 = relu(z4_2);
-  std::vector<double>  a5_2 = relu(z5_2);
+  std::vector<double> a1_2 = relu(z1_2);
+  std::vector<double> a2_2 = relu(z2_2);
+  std::vector<double> a3_2 = relu(z3_2);
+  std::vector<double> a4_2 = relu(z4_2);
+  std::vector<double> a5_2 = relu(z5_2);
 
   // Concatenating and performing final layer matrix operations
   a1_2.insert(a1_2.end(), a2_2.begin(), a2_2.end());
