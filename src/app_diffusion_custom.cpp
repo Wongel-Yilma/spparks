@@ -66,25 +66,15 @@ AppDiffusionCustom::AppDiffusionCustom(SPPARKS *spk, int narg, char **arg) :
   // parse arguments
 
   if (narg < 3) error->all(FLERR,"Illegal app_style command");
-  // if (strcmp(arg[1],"off") == 0) engstyle = NO_ENERGY;
-  // else if (strcmp(arg[1],"linear") == 0) engstyle = LINEAR;
-  // else if (strcmp(arg[1],"nonlinear") == 0) engstyle = NONLINEAR;
-  // else error->all(FLERR,"Illegal app_style command");
   nn = std::stoi(arg[1]);
-  engstyle = NONLINEAR; // Only linear energy is supported for now
+  engstyle = NONLINEAR; 
   if (strcmp(arg[2],"hop") == 0) {
     // if (narg != 3) error->all(FLERR,"Illegal app_style command");
     hopstyle = SCHWOEBEL;
   } else error->all(FLERR,"Illegal app_style command: only nearest-neighbor hop is supported");
 
-  // increment delpropensity by 1 for nonlinear energy
-  // increment delpropensity and delevent by 1 for Schwoebel hops
-  // change allow_rejection to 1 for linear energy and non-Schwoebel hops
-
-  if (engstyle == NONLINEAR) delpropensity++;
-  if (hopstyle == SCHWOEBEL) delpropensity++;
-  if (hopstyle == SCHWOEBEL) delevent++;
-  if (engstyle == LINEAR && hopstyle == NNHOP) allow_rejection = 1;
+  delevent = nn-1;
+  delpropensity = nn-1;
 
   create_arrays();
 
@@ -518,13 +508,10 @@ double AppDiffusionCustom::site_propensity_linear(int i)
 {
   int j,ihop,nhop1,nhop2,eflag;
   double probone,proball, eb;
-  int l,ll,lll,o;
-  // int l,ll,lll,llll,o;
+  int l,ll,lll,llll,o;
 
-  int m;
+  int m, mm,mmm,mmmm;;
   double dist;
-  int  mm,mmm;
-  // int  mm,mmm,mmmm;
 
   int num_occupied_sites = 0;
   std::vector<std::vector<double>> occupied_coords(512,std::vector<double>(3,0.0));
@@ -575,17 +562,16 @@ double AppDiffusionCustom::site_propensity_linear(int i)
             num_occupied_sites++;
           }
           neigh_check[mmm] = 1;
-          // Uncomment the following lines if you want to check for Fourth layer neighbors
-          // for (llll=0; llll<maxneigh; llll++){
-          //   mmmm = neighbor[mmm][llll];
-          //   if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
-          //     for(o = 0; o<3; o++){
-          //       occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xi[o];
-          //     }
-          //     num_occupied_sites++;
-          //   }
-          //   neigh_check[mmmm] = 1;
-          // }
+          for (llll=0; llll<maxneigh; llll++){
+            mmmm = neighbor[mmm][llll];
+            if (lattice[mmmm]==OCCUPIED && neigh_check[mmmm]==0){
+              for(o = 0; o<3; o++){
+                occupied_coords[num_occupied_sites][o] = xyz[mmmm][o] - xi[o];
+              }
+              num_occupied_sites++;
+            }
+            neigh_check[mmmm] = 1;
+          }
         }
     }
   }
@@ -1065,15 +1051,15 @@ void AppDiffusionCustom::update_propensities(int i, int j)
   //   }
   // }
 
-  if(nn ==2 || nn==3){
+  if(nn==3){
     nsites += neighbor2(i,&esites[nsites]);
       if (j != i) nsites += neighbor2(j,&esites[nsites]);
   }
-  else if (nn==4 || nn==5){
+  else if (nn==4){
     nsites += neighbor3(i,&esites[nsites]);
       if (j != i) nsites += neighbor3(j,&esites[nsites]);
   }
-  else if (nn>=6){
+  else if (nn>=5){
     nsites += neighbor4(i,&esites[nsites]);
       if (j != i) nsites += neighbor4(j,&esites[nsites]);
   }
