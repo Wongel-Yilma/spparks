@@ -56,7 +56,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   double *z_md;
   std::vector<std::vector<double>> first_shell_coords;
   std::vector<std::vector<double>> edge_index;
-
+  std::vector<std::vector<double>> destinations;
 
   double *box_dims;
   double *half_box_dims;
@@ -65,7 +65,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
     int destination;       // local ID of destination site
     int next;              // index of next event for this site
   };
-
+  
   Event *events;           // list of events for all owned sites
   int nevents;             // # of events for all owned sites
   int maxevent;            // max # of events list can hold
@@ -73,21 +73,26 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   int freeevent;           // index of 1st unused event in list
   int *neigh_check;         // list of neighbors 
   int *hopsite;         // list of possible hops for one site 
-
+  
   // phases and pairwise weights used for site energy calculation
   std::set<int> phase_labels;
   std::map<int,bool> is_pinned;
   std::map<std::pair<int,int>,double> weights;
   void parse_diffmultiphase(int narg, char **arg);
-
+  
   double site_propensity_linear(int);
   
   void site_event_linear(int, class RandomPark *);
-
+  
   void clear_events(int);
-
+  
   void add_event(int, int, double);
+  std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
+  double vec_dot(const std::vector<double> &,const std::vector<double> &);
+  double vec_norm(const std::vector<double> &);
+  std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
   double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, std::vector<int>&, int );
+  double calculate_distance(const std::vector<double> &, const std::vector<double> &);
 
   void allocate_data();
 };

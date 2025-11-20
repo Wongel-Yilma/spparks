@@ -23,6 +23,7 @@
 #include <vector>
 #include "json.hpp"
 #include <fstream>
+#include <cmath>
 using namespace SPPARKS_NS;
 using json= nlohmann::json;
 using std::map;
@@ -70,6 +71,7 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   in.close();
   edge_index = j["edge_index"];
   first_shell_coords = j["coords"];
+  destinations = j["octa_destinations"];
 
   engstyle = LINEAR;
 
@@ -510,8 +512,117 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
   for (k = 0; k < nsites; k++) echeck[esites[k]] = 0;
 }
 
-double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
+double AppDiffusionMultiphaseGCN::calculate_distance(const std::vector<double> &a,const std::vector<double> &b){
+  double c = (a[0]-b[0])+(a[1]-b[1])+(a[2]-b[2]);
+  return c;
+}
+
+double AppDiffusionMultiphaseGCN::vec_dot(const std::vector<double> &a,const std::vector<double> &b){
+  double c = a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  return c;
+}
+
+std::vector<double> AppDiffusionMultiphaseGCN::vec_cross(const std::vector<double> &a,const std::vector<double> &b){
+  std::vector<double> c(3,0.0);
+  c[0] = a[1]*b[2] - a[2]*b[1];
+  c[1] = a[2]*b[0] - a[0]*b[2];
+  c[2] = a[0]*b[1] - a[1]*b[0];
+  return c;
+}
+
+double AppDiffusionMultiphaseGCN::vec_norm(const std::vector<double> &a){
+  double c = std::sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
+  return c;
+}
+std::vector<double> AppDiffusionMultiphaseGCN::mat_vecmul(const std::vector<std::vector<double>> &B,const std::vector<double> &a){
   
+  int m = a.size();
+  int p = B.size();
+  int q = B[0].size();
+  std::vector<double> c(q,0.0);
+  for (size_t i =0; i<p;i++){
+      for(size_t k=0; k<m; k++){
+          c[i] +=  B[k][i]*a[k];
+      }
+  }
+  return c;
+}
+double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
+  int o,l, k, kk,flag;
+  int src, dst;
+  std::vector<int> first_shell(42,0.0);
+  std::vector<double> new_x(3);
+  std::vector<double> new_y(3);
+  std::vector<double> new_z(3);
+  std::vector<std::vector<double>> original_cs ={
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0}
+      };
+
+  std::vector<std::vector<double>> rotated_cs(3, std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> selected_coords(42, std::vector<double>(3,0.0));
+  std::vector<double> edge_attr(edge_index.size(),0.0);
+  for ( o=0; o<3; o++){
+    new_x[o] = xyz[j][o] - xyz[i][o];
+    if (new_x[o]>half_box_dims[o]){
+      new_x[o] = new_x[o]- box_dims[o] ;
+    }
+    else if (new_x[o]<-half_box_dims[o]){
+      new_x[o] = new_x[o] + box_dims[o];
+    }
+  }
+
+  double dot_product = 1.0;
+  for ( l =0;l<destinations.size();l++){
+    dot_product = vec_dot(new_x, destinations[l]);
+    if (dot_product==0){
+      new_y = destinations[l];
+      break;
+    }
+  }
+  rotated_cs[0]= new_x;
+  rotated_cs[1]= new_y;
+  new_z = vec_cross(new_x, new_y);
+  rotated_cs[2]= new_z;
+
+  for ( k=0; k<3; k++){
+    for ( kk=0; kk<3; kk++){
+        R[k][kk] = vec_dot(original_cs[k],rotated_cs[kk])/(vec_norm(original_cs[k])*vec_norm(rotated_cs[kk]));
+    }
+  }
+  // Rotating the local coordinates with R
+  for ( k = 0; k<num_occupied_sites;k++){
+    rotated_coords[k] = mat_vecmul(R,local_coords[k]);
+  }
+ //Checking the occupancy of the local coordinates
+  for (k =0; k<num_occupied_sites;k++){
+    for (kk=0;kk<first_shell.size();kk++){
+      flag=1;
+      for(o=0; o<3;o++){
+        if (fabs(first_shell_coords[kk][o]-rotated_coords[k][o])>TOLERANCE){
+          flag=0;
+          break;
+        }
+      }
+      if(flag==1){
+        first_shell[kk] = neighbor_types[k]-1; // Mapping Ni=0, H=1, V=2 -- as defined in the GCN 
+        for (o=0; o<3;o++){
+          selected_coords[kk][o] = rotated_coords[k][o];
+        }
+        break;
+      }                                                                                      
+    }
+  }
+  
+  for (l=0;l<edge_index.size(); l++){
+    src = edge_index[l][0];
+    dst = edge_index[l][1];
+    edge_attr[l] = calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
+  }
+  // Call the torch GCN model here
   
   return 0.40;
 }
