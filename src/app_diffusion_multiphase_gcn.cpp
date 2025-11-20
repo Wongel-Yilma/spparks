@@ -21,12 +21,16 @@
 #include "error.h"
 #include "app_diffusion_multiphase_gcn.h"
 #include <vector>
+#include "json.hpp"
+#include <fstream>
 using namespace SPPARKS_NS;
+using json= nlohmann::json;
 using std::map;
 using std::set;
 
 enum{LINEAR};
 enum {ZERO, NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
+enum {ZERO_TYPE, FCC, OCTA, TETRA};
 
 #define DELTAEVENT 100000
 #define NUHOP 1e13
@@ -59,7 +63,13 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 
   // no args for this app
 
-  if (narg > 1) error->all(FLERR,"Illegal app_style command");
+  // if (narg > 1) error->all(FLERR,"Illegal app_style command");
+  std::ifstream in(arg[1]);
+  json j;
+  in >> j;
+  in.close();
+  edge_index = j["edge_index"];
+  first_shell_coords = j["coords"];
 
   engstyle = LINEAR;
 
@@ -330,7 +340,7 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   int j,k;
   double probone,proball;
   
-  // add event if neighbors are dissimilar and not pinned
+  // add event if neighbor sites are Vacancy sites
   
   clear_events(i);
   
@@ -342,7 +352,8 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   int l, ll;
   int m, mm,o, ihop;
 
-  std::vector<std::vector<double>> neighbor_coords(100,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> neighbor_coords(120,std::vector<double>(3,0.0));
+  std::vector<int> neighbor_types(120);
   std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};   // Coordinate of the H atom
   double dist {0.0};
 
@@ -357,9 +368,7 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   neigh_check[i]=1;
   for (k = 0; k < numneigh[i]; k++) {
     j = neighbor[i][k];
-    // j_old = lattice[j];
-    
-    // if (lattice[j] == lattice[i] || is_pinned[lattice[j]]|| lattice[]) continue;
+  
     if (lattice[j]==V){// only allow exchanges with phase '3' or '2'
       hopsite [nhop1++] = j;
     } 
@@ -368,24 +377,26 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
       for (o=0; o<3; o++){
         neighbor_coords[num_occupied_neighbors][o] = xyz[j][o] - xi[o];
       }
+      neighbor_types[num_occupied_neighbors++] = lattice[j];
       neigh_check[j]=1;
-      num_occupied_neighbors++;
+
       for (l=0; l<numneigh[j]; l++){
         m = neighbor[j][l];
         if (lattice[m]!=T && neigh_check[m]==0){
           for (o=0; o<3; o++){
             neighbor_coords[num_occupied_neighbors][o] = xyz[m][o] - xi[o];
           }
+          neighbor_types[num_occupied_neighbors++] = lattice[m];
           neigh_check[m]=1;
-          num_occupied_neighbors++;
           for (ll=0; ll<numneigh[m]; ll++){
             mm = neighbor[m][ll];
             if (lattice[mm]==NI && neigh_check[mm]==0){
               for (o=0; o<3; o++){
                 neighbor_coords[num_occupied_neighbors][o] = xyz[mm][o] - xi[o];
               }
+              neighbor_types[num_occupied_neighbors++] = lattice[mm];
+              neigh_check[mm]=1;
             }
-            neigh_check[mm]=1;
           }
         }
       }
@@ -403,7 +414,7 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
 
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
-    double eb = calculate_barrier_energy(i,j,neighbor_coords,num_occupied_neighbors);
+    double eb = calculate_barrier_energy(i,j,neighbor_coords,neighbor_types,num_occupied_neighbors);
     probone = (NUHOP)*exp(-eb*t_inverse);
     add_event(i,j,probone);
     proball += probone;
@@ -499,7 +510,9 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
   for (k = 0; k < nsites; k++) echeck[esites[k]] = 0;
 }
 
-double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, int num_occupied_sites){
+double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
+  
+  
   return 0.40;
 }
 /* ----------------------------------------------------------------------

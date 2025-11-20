@@ -54,6 +54,8 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   double *x_md;
   double *y_md;
   double *z_md;
+  std::vector<std::vector<double>> first_shell_coords;
+  std::vector<std::vector<double>> edge_index;
 
 
   double *box_dims;
@@ -85,7 +87,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   void clear_events(int);
 
   void add_event(int, int, double);
-  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, int );
+  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, std::vector<int>&, int );
 
   void allocate_data();
 };
