@@ -50,6 +50,12 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
 
   int dimension;
   int *lattice;
+  int *type;
+  double *x_md;
+  double *y_md;
+  double *z_md;
+
+
   double *box_dims;
   double *half_box_dims;
   struct Event {           // one event for an owned site

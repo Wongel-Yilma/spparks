@@ -2,6 +2,7 @@
 #include "app_chemistry.h"
 #include "app_diffusion_custom.h"
 #include "app_diffusion.h"
+#include "app_diffusion_multiphase_gcn.h"
 #include "app_diffusion_multiphase.h"
 #include "app_erbium.h"
 #include "app_ising.h"

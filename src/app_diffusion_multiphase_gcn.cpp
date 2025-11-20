@@ -26,7 +26,7 @@ using std::map;
 using std::set;
 
 enum{LINEAR};
-enum {NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
+enum {ZERO, NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
 
 #define DELTAEVENT 100000
 #define NUHOP 1e13
@@ -46,8 +46,8 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 {
   // need to double check these values
 
-  ninteger = 1;
-  ndouble = 0;
+  ninteger = 2;
+  ndouble = 3;
   delpropensity = 2;
   delevent = 1;
   allow_kmc = 1;
@@ -168,6 +168,10 @@ void AppDiffusionMultiphaseGCN::parse_diffmultiphase(int narg, char **arg)
 void AppDiffusionMultiphaseGCN::grow_app()
 {
   lattice = iarray[0];
+  type = iarray[1];
+  x_md = darray[0];
+  y_md = darray[1];
+  z_md = darray[2];
 }
 
 /* ----------------------------------------------------------------------
