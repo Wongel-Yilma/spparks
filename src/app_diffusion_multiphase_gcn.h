@@ -24,6 +24,8 @@ AppStyle(diffusion/multiphase/gcn,AppDiffusionMultiphaseGCN)
 #include <set>
 #include <utility>
 #include <vector>
+#include <torch/torch.h>
+#include <torch/script.h>
 
 namespace SPPARKS_NS {
 
@@ -55,8 +57,12 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   double *y_md;
   double *z_md;
   std::vector<std::vector<double>> first_shell_coords;
-  std::vector<std::vector<double>> edge_index;
+  std::vector<std::vector<int64_t>> edge_index_vec;
   std::vector<std::vector<double>> destinations;
+  torch::Tensor batch;
+  torch::jit::script::Module gcn;
+  std::vector<int64_t> edge_index_linearized;
+  torch::Tensor edge_index;
 
   double *box_dims;
   double *half_box_dims;
@@ -93,7 +99,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
   double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, std::vector<int>&, int );
   double calculate_distance(const std::vector<double> &, const std::vector<double> &);
-
+  std::vector<int64_t> linearize_int(const std::vector<std::vector<int64_t>> &);
   void allocate_data();
 };
 

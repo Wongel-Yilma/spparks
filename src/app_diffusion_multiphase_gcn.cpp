@@ -24,6 +24,8 @@
 #include "json.hpp"
 #include <fstream>
 #include <cmath>
+#include <torch/torch.h>
+#include <torch/script.h>
 using namespace SPPARKS_NS;
 using json= nlohmann::json;
 using std::map;
@@ -35,7 +37,7 @@ enum {ZERO_TYPE, FCC, OCTA, TETRA};
 
 #define DELTAEVENT 100000
 #define NUHOP 1e13
-#define TOLERANCE 1.0e-5
+#define TOLERANCE 1.0e-4
 
 // This app is based on the diffusion app (for Kawasaki dynamics)
 // These are the significant changes and simplifications
@@ -50,7 +52,7 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   AppLattice(spk,narg,arg), phase_labels(), is_pinned(), weights()
 {
   // need to double check these values
-
+  torch::NoGradGuard no_grad;
   ninteger = 2;
   ndouble = 3;
   delpropensity = 2;
@@ -69,10 +71,13 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   json j;
   in >> j;
   in.close();
-  edge_index = j["edge_index"];
+  edge_index_vec = j["edge_index"];
   first_shell_coords = j["coords"];
   destinations = j["octa_destinations"];
-
+  gcn = torch::jit::load(arg[2]);
+  batch =  torch::zeros({42}, torch::dtype(torch::kLong));
+  edge_index_linearized = linearize_int(edge_index_vec);
+  edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
   engstyle = LINEAR;
 
   create_arrays();
@@ -353,9 +358,9 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   int num_occupied_neighbors {0};
   int l, ll;
   int m, mm,o, ihop;
-
-  std::vector<std::vector<double>> neighbor_coords(120,std::vector<double>(3,0.0));
-  std::vector<int> neighbor_types(120);
+  std::vector<int> local_neigh_check(nlocal + nghost, 0);
+  std::vector<std::vector<double>> neighbor_coords(200,std::vector<double>(3,0.0));
+  std::vector<int> neighbor_types(200);
   std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};   // Coordinate of the H atom
   double dist {0.0};
 
@@ -368,6 +373,7 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   
   // this is similar to the Potts approach
   neigh_check[i]=1;
+  local_neigh_check[i]=1;
   for (k = 0; k < numneigh[i]; k++) {
     j = neighbor[i][k];
   
@@ -380,24 +386,24 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
         neighbor_coords[num_occupied_neighbors][o] = xyz[j][o] - xi[o];
       }
       neighbor_types[num_occupied_neighbors++] = lattice[j];
-      neigh_check[j]=1;
+      local_neigh_check[j]=1;
 
       for (l=0; l<numneigh[j]; l++){
         m = neighbor[j][l];
-        if (lattice[m]!=T && neigh_check[m]==0){
+        if (lattice[m]!=T && local_neigh_check[m]==0){
           for (o=0; o<3; o++){
             neighbor_coords[num_occupied_neighbors][o] = xyz[m][o] - xi[o];
           }
           neighbor_types[num_occupied_neighbors++] = lattice[m];
-          neigh_check[m]=1;
+          local_neigh_check[m]=1;
           for (ll=0; ll<numneigh[m]; ll++){
             mm = neighbor[m][ll];
-            if (lattice[mm]==NI && neigh_check[mm]==0){
+            if (lattice[mm]==NI && local_neigh_check[mm]==0){
               for (o=0; o<3; o++){
                 neighbor_coords[num_occupied_neighbors][o] = xyz[mm][o] - xi[o];
               }
               neighbor_types[num_occupied_neighbors++] = lattice[mm];
-              neigh_check[mm]=1;
+              local_neigh_check[mm]=1;
             }
           }
         }
@@ -421,7 +427,7 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
     add_event(i,j,probone);
     proball += probone;
   }
- for ( l = 0; l < nlocal + nghost; l++) neigh_check[l] = 0;
+ for ( l = 0; l < nlocal + nghost; l++) local_neigh_check[l] = 0;
   return proball;
 }
 
@@ -513,8 +519,7 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
 }
 
 double AppDiffusionMultiphaseGCN::calculate_distance(const std::vector<double> &a,const std::vector<double> &b){
-  double c = (a[0]-b[0])+(a[1]-b[1])+(a[2]-b[2]);
-  return c;
+  return std::sqrt(std::pow((a[0]-b[0]),2)+std::pow((a[1]-b[1]),2)+std::pow((a[2]-b[2]),2));
 }
 
 double AppDiffusionMultiphaseGCN::vec_dot(const std::vector<double> &a,const std::vector<double> &b){
@@ -547,10 +552,23 @@ std::vector<double> AppDiffusionMultiphaseGCN::mat_vecmul(const std::vector<std:
   }
   return c;
 }
+std::vector<int64_t> AppDiffusionMultiphaseGCN::linearize_int (const std::vector<std::vector<int64_t>> &A){
+  int64_t num_rows = A.size();
+  int64_t num_cols = A[0].size();
+  std::vector<int64_t> B;
+  B.reserve(num_rows * num_cols);
+  for (size_t col_idx = 0; col_idx < num_cols; col_idx++){
+    for (size_t row_idx = 0; row_idx < num_rows; row_idx++){
+        B.push_back(A[row_idx][col_idx]);
+    }
+  }
+  return B;
+}
+
 double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
   int o,l, k, kk,flag;
   int src, dst;
-  std::vector<int> first_shell(42,0.0);
+  std::vector<int64_t> first_shell(42,0);
   std::vector<double> new_x(3);
   std::vector<double> new_y(3);
   std::vector<double> new_z(3);
@@ -564,7 +582,7 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
   std::vector<std::vector<double>> selected_coords(42, std::vector<double>(3,0.0));
-  std::vector<double> edge_attr(edge_index.size(),0.0);
+  std::vector<float> edge_attr_vec(edge_index_vec.size(),0.0);
   for ( o=0; o<3; o++){
     new_x[o] = xyz[j][o] - xyz[i][o];
     if (new_x[o]>half_box_dims[o]){
@@ -616,15 +634,19 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
       }                                                                                      
     }
   }
-  
-  for (l=0;l<edge_index.size(); l++){
-    src = edge_index[l][0];
-    dst = edge_index[l][1];
-    edge_attr[l] = calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
+  for (l=0;l<edge_index_vec.size(); l++){
+    src = edge_index_vec[l][0];
+    dst = edge_index_vec[l][1];
+    edge_attr_vec[l] = 3.5295*calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
   }
   // Call the torch GCN model here
-  
-  return 0.40;
+  torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();
+  torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
+  std::vector<torch::jit::IValue> inputs = { edge_index, atom_type ,edge_attr, batch};
+  auto eb = gcn.forward(inputs).toTensor().item<double>()*0.03553854+0.39268717;
+  // double eb = 0.40;
+  // std::cout<< "output "<< output.item<double>()*0.03553854+0.39268717<<std::endl;  // Multiply with the STD and add mean
+  return eb;
 }
 /* ----------------------------------------------------------------------
    clear all events out of list for site I

@@ -1,0 +1,92 @@
+# ===============================
+# SPPARKS + TorchScript Makefile
+# ===============================
+
+SHELL = /bin/sh
+
+# -----------------------------------------
+# Compiler settings
+# -----------------------------------------
+CC = g++
+CXX = g++
+
+# Torch requires at least C++17
+CCFLAGS = -g -O3 -std=c++17 -fPIC -D_GLIBCXX_USE_CXX11_ABI=1
+SHFLAGS = -fPIC
+DEPFLAGS = -M
+
+LINK = g++
+LINKFLAGS = -g -O3
+LIB =
+SIZE = size
+
+ARCHIVE = ar
+ARFLAGS = -rc
+SHLIBFLAGS = -shared
+
+# -----------------------------------------
+# TORCH settings
+# -----------------------------------------
+TORCH_PATH = /home/wongel/run_torch_from_cpp/libtorch
+
+TORCH_INC = -I$(TORCH_PATH)/include \
+            -I$(TORCH_PATH)/include/torch/csrc/api/include
+
+TORCH_LIB = -L$(TORCH_PATH)/lib \
+            -Wl,-rpath,$(TORCH_PATH)/lib \
+            -ltorch -ltorch_cpu -lc10
+
+# If you later switch to GPU libtorch, uncomment:
+# TORCH_LIB += -ltorch_cuda -lnvrtc -lcudart -lc10_cuda
+
+# -----------------------------------------
+# SPPARKS settings
+# -----------------------------------------
+
+SPK_INC = -DSPPARKS_GZIP
+
+MPI_INC = -I../STUBS
+MPI_PATH =
+MPI_LIB = ../STUBS/libmpi.a
+
+EXTRA_INC = $(SPK_INC) $(MPI_INC) $(TORCH_INC)
+EXTRA_PATH = $(MPI_PATH)
+EXTRA_LIB = $(MPI_LIB) $(TORCH_LIB)
+
+# -----------------------------------------
+# Source paths
+# -----------------------------------------
+vpath %.cpp ..
+vpath %.h ..
+
+# -----------------------------------------
+# Link target
+# -----------------------------------------
+$(EXE): $(OBJ)
+	$(LINK) $(LINKFLAGS) $(EXTRA_PATH) $(OBJ) $(EXTRA_LIB) $(LIB) -o $(EXE)
+	$(SIZE) $(EXE)
+
+# -----------------------------------------
+# Static library target
+# -----------------------------------------
+lib: $(OBJ)
+	$(ARCHIVE) $(ARFLAGS) $(EXE) $(OBJ)
+
+# -----------------------------------------
+# Shared library target
+# -----------------------------------------
+shlib: $(OBJ)
+	$(CC) $(CCFLAGS) $(SHFLAGS) $(SHLIBFLAGS) $(EXTRA_PATH) -o $(EXE) \
+        $(OBJ) $(EXTRA_LIB) $(LIB)
+
+# -----------------------------------------
+# Compilation rules
+# -----------------------------------------
+%.o: %.cpp
+	$(CC) $(CCFLAGS) $(SHFLAGS) $(EXTRA_INC) -c $<
+
+%.d: %.cpp
+	$(CC) $(CCFLAGS) $(EXTRA_INC) $(DEPFLAGS) $< > $@
+
+DEPENDS = $(OBJ:.o=.d)
+include $(DEPENDS)
