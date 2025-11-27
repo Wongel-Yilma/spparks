@@ -49,7 +49,8 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   int allocated;
   int *esites;
   int *echeck;
-
+  // int num_evaluations;
+  int num_events_decreased;
   int dimension;
   int *lattice;
   int *type;
@@ -63,6 +64,12 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   torch::jit::script::Module gcn;
   std::vector<int64_t> edge_index_linearized;
   torch::Tensor edge_index;
+
+  ///// Debugging vectors /////
+  // std::vector<int> removed_events;
+  // std::vector<int> active_events;
+  // std::vector<int> all_events_generated;
+  //////////////////////
 
   double *box_dims;
   double *half_box_dims;

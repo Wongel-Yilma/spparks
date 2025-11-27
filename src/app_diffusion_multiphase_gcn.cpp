@@ -26,10 +26,13 @@
 #include <cmath>
 #include <torch/torch.h>
 #include <torch/script.h>
+#include "matplotlibcpp.h"
 using namespace SPPARKS_NS;
 using json= nlohmann::json;
 using std::map;
 using std::set;
+
+namespace plt = matplotlibcpp;
 
 enum{LINEAR};
 enum {ZERO, NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
@@ -79,7 +82,8 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   edge_index_linearized = linearize_int(edge_index_vec);
   edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
   engstyle = LINEAR;
-
+  // num_evaluations = 0;
+  // num_events_decreased= 0;
   create_arrays();
   esites = NULL;
   echeck = NULL;
@@ -94,6 +98,10 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 
 AppDiffusionMultiphaseGCN::~AppDiffusionMultiphaseGCN()
 {
+  // plt::plot(active_events, "b-");
+  // plt::plot(removed_events, "r-");
+  // plt::plot(all_events_generated, "g-");
+  // plt::show();
   delete [] esites;
   delete [] echeck;
   delete [] neigh_check;
@@ -241,6 +249,7 @@ void AppDiffusionMultiphaseGCN::init_app()
 
 void AppDiffusionMultiphaseGCN::setup_app()
 {
+  // std::cout << "Number of GCN evaluations: " << num_evaluations << std::endl;
   for (int i = 0; i < nlocal+nghost; i++) echeck[i] = 0;
 
   // clear event list
@@ -377,10 +386,10 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   for (k = 0; k < numneigh[i]; k++) {
     j = neighbor[i][k];
   
-    if (lattice[j]==V){// only allow exchanges with phase '3' or '2'
+    if (lattice[j]==V){// only allow exchanges with Vacancy
       hopsite [nhop1++] = j;
     } 
-    if (lattice[j]==T) continue; // Tetrahedral sites are pinned
+    if (lattice[j]==T) continue; // Tetrahedral sites are ignored
     else{  // Loop through the second neighbor and 
       for (o=0; o<3; o++){
         neighbor_coords[num_occupied_neighbors][o] = xyz[j][o] - xi[o];
@@ -426,6 +435,8 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
     probone = (NUHOP)*exp(-eb*t_inverse);
     add_event(i,j,probone);
     proball += probone;
+    // num_evaluations++;
+
   }
  for ( l = 0; l < nlocal + nghost; l++) local_neigh_check[l] = 0;
   return proball;
@@ -450,6 +461,14 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
   // pick one event from total propensity by accumulating its probability
   // compare prob to threshhold, break when reach it to select event
   // perform event
+  // std::cout<< "Number of GCN evaluations: " << num_evaluations << std::endl;
+  // std::cout<< "Number of Events: " << nevents << std::endl;
+  // std::cout<< "Number of Events decreased: " << num_events_decreased << std::endl;
+
+  // removed_events.push_back(num_events_decreased);
+  // active_events.push_back(nevents);
+  // all_events_generated.push_back(num_evaluations);
+
 
   double threshhold = random->uniform() * propensity[i2site[i]];
   double proball = 0.0;
@@ -643,8 +662,8 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();
   torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
   std::vector<torch::jit::IValue> inputs = { edge_index, atom_type ,edge_attr, batch};
-  auto eb = gcn.forward(inputs).toTensor().item<double>()*0.03553854+0.39268717;
-  // double eb = 0.40;
+  // auto eb = gcn.forward(inputs).toTensor().item<double>();
+  double eb = 0.40;
   // std::cout<< "output "<< output.item<double>()*0.03553854+0.39268717<<std::endl;  // Multiply with the STD and add mean
   return eb;
 }
