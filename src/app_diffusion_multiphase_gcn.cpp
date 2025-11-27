@@ -52,7 +52,7 @@ enum {ZERO_TYPE, FCC, OCTA, TETRA};
 /* ---------------------------------------------------------------------- */
 
 AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, char **arg) : 
-  AppLattice(spk,narg,arg), phase_labels(), is_pinned(), weights()
+  AppLattice(spk,narg,arg), phase_labels(), is_pinned(), weights(), device(torch::cuda::is_available() ? torch::kCUDA : torch::kCPU)
 {
   // need to double check these values
   torch::NoGradGuard no_grad;
@@ -66,6 +66,13 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   numrandom = 1;
   neigh_check = NULL;
   hopsite = NULL;
+  // Check if CUDA is available
+  if (device == torch::kCPU) {
+    std::cout << "CUDA is not available. Using CPU." << std::endl;
+  } else {
+    std::cout << "CUDA is available! Running Eb calculation on GPU." << std::endl;
+  }
+
 
   // no args for this app
 
@@ -81,6 +88,8 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   batch =  torch::zeros({42}, torch::dtype(torch::kLong));
   edge_index_linearized = linearize_int(edge_index_vec);
   edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
+  edge_index = edge_index.to(device);
+  batch = batch.to(device);
   engstyle = LINEAR;
   // num_evaluations = 0;
   // num_events_decreased= 0;
@@ -661,9 +670,12 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   // Call the torch GCN model here
   torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();
   torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
+  atom_type= atom_type.to(device);
+  edge_attr = edge_attr.to(device);
+
   std::vector<torch::jit::IValue> inputs = { edge_index, atom_type ,edge_attr, batch};
-  // auto eb = gcn.forward(inputs).toTensor().item<double>();
-  double eb = 0.40;
+  // auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
+  double eb = 0.40; 
   // std::cout<< "output "<< output.item<double>()*0.03553854+0.39268717<<std::endl;  // Multiply with the STD and add mean
   return eb;
 }

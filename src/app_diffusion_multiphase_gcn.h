@@ -60,6 +60,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   std::vector<std::vector<double>> first_shell_coords;
   std::vector<std::vector<int64_t>> edge_index_vec;
   std::vector<std::vector<double>> destinations;
+  torch::Device device;
   torch::Tensor batch;
   torch::jit::script::Module gcn;
   std::vector<int64_t> edge_index_linearized;
