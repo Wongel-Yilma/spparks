@@ -3,49 +3,59 @@ variable SEED equal                 1
 
 variable T equal                 0.034469333048
 
+seed		 ${SEED}
 
-app_style   diffusion_custom linear  hop nn_model.json shells.json barrier.csv
+app_style   diffusion/multiphase/gcn  connectivity.json /home/wongel/run_torch_from_cpp/gated_gcn.pt
 dimension	 3
 
 
 boundary p p p
 
-#lattice     sc/6n 1
-lattice 	fcc 1
+lattice 	fcc/octa/tetra 1
 
-region      box block 0 10 0 10 0 20
+region      box block -5 5 -5 5 -100 100
 create_box  box 
-# region      origin block 0 3 0 3 0 3
 
-create_sites region box value site 1
+create_sites	box value i2 1 basis 1*4 1 basis 5*8 2 basis 9*16 3
 
-seed		 ${SEED}
+set     i1 value 1 if i2 = 1  # fcc -> Nickel
+set     i1 value 3 if i2 = 2  # octa -> mobile vacancy  
+set     i1 value 4 if i2 = 3
 
-variable 	c loop 39
+
+
+
+# set     i1 value 2 if i2 = 2 fraction 0.5   # octahedral fraction -> hydrogen
+
+variable 	c loop 400
 
 
 label 		cloop
 
-variable 	p equal (v_c)*0.5
+variable 	p equal (v_c)*0.5-100.5
 print 		$p
-if $p < 10  then "variable o equal v_p*0.05" else "variable o equal (20-v_p)*0.05 "
+if $p < 0  then "variable o equal 1.005+v_p*0.01" else "variable o equal 1-v_p*0.01 "
 
-
-set     site value 2 if z = $p fraction $o
+print 		$o
+set     i1 value 2 fraction $o if i2 = 2 if z = $p 
 
 next 	c
 jump 	in.diffuse  cloop
 
 
+diffusion/multiphase pin 1
+diffusion/multiphase phase 2
+diffusion/multiphase phase 3
+diffusion/multiphase pin 4
 
 
 solve_style     tree
 sector          yes
 diag_style       energy
 temperature	    ${T}
-stats            1e-10
+stats            5e-9
 
-dump            1 text 1e-10 my.dump id site x y z
+dump            1 text 5e-9 my.dump id site x y z
 
 
-run             1e-9
+run             1e-7

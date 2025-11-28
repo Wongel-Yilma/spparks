@@ -11,7 +11,7 @@ CC = g++
 CXX = g++
 
 # Torch requires at least C++17
-CCFLAGS = -g -O3 -std=c++17 -fPIC -D_GLIBCXX_USE_CXX11_ABI=1
+CCFLAGS = -g -O3 -std=c++17 -fPIC -D_GLIBCXX_USE_CXX11_ABI=1 
 SHFLAGS = -fPIC
 DEPFLAGS = -M
 
@@ -49,9 +49,13 @@ MPI_INC = -I../STUBS
 MPI_PATH =
 MPI_LIB = ../STUBS/libmpi.a
 
-EXTRA_INC = $(SPK_INC) $(MPI_INC) $(TORCH_INC)
+PY_INC = -I/usr/include/python3.10 
+PY_LIB = -lpython3.10
+
+EXTRA_INC = $(SPK_INC) $(MPI_INC) $(TORCH_INC) $(PY_INC)
 EXTRA_PATH = $(MPI_PATH)
-EXTRA_LIB = $(MPI_LIB) $(TORCH_LIB)
+EXTRA_LIB = $(MPI_LIB) $(TORCH_LIB) $(PY_LIB)
+
 
 # -----------------------------------------
 # Source paths

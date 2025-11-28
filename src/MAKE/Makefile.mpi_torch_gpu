@@ -38,19 +38,14 @@ MPI_INC =
 MPI_PATH =
 MPI_LIB =
 
-TORCH_PATH = /home/usu-comp/libtorch_cuda130/libtorch
+TORCH_PATH = /home/wongel/run_torch_from_cpp/libtorch
 
 TORCH_INC = -I$(TORCH_PATH)/include \
             -I$(TORCH_PATH)/include/torch/csrc/api/include
 
 TORCH_LIB = -L$(TORCH_PATH)/lib \
             -Wl,-rpath,$(TORCH_PATH)/lib \
-            -Wl,--no-as-needed \
-              -ltorch_cuda -lc10_cuda -ltorch_cuda_linalg \
-            -Wl,--as-needed \
-              -ltorch -ltorch_cpu -lc10 \
-            -L/usr/local/cuda-13.0/lib64 \
-              -lcusolver -lcusparse -lcufft -lcublas -lcudart
+            -ltorch -ltorch_cpu -lc10
 
 # JPEG library, only needed if -DLAMMPS_JPEG listed with LMP_INC
 # INC = path for jpeglib.h

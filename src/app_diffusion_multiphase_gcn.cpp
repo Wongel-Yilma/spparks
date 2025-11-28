@@ -85,6 +85,7 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   first_shell_coords = j["coords"];
   destinations = j["octa_destinations"];
   gcn = torch::jit::load(arg[2]);
+  gcn.to(device);
   batch =  torch::zeros({42}, torch::dtype(torch::kLong));
   edge_index_linearized = linearize_int(edge_index_vec);
   edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
@@ -673,10 +674,9 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   atom_type= atom_type.to(device);
   edge_attr = edge_attr.to(device);
 
-  std::vector<torch::jit::IValue> inputs = { edge_index, atom_type ,edge_attr, batch};
-  // auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
-  double eb = 0.40; 
-  // std::cout<< "output "<< output.item<double>()*0.03553854+0.39268717<<std::endl;  // Multiply with the STD and add mean
+  std::vector<torch::jit::IValue> inputs = { atom_type ,edge_attr, batch,edge_index};
+  auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
+  // double eb = 0.40; // Dummy value for debugging
   return eb;
 }
 /* ----------------------------------------------------------------------
