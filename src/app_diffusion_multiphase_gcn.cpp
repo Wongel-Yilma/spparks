@@ -81,7 +81,7 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 
   // no args for this app
 
-  // if (narg > 1) error->all(FLERR,"Illegal app_style command");
+  if (narg < 6) error->all(FLERR,"Illegal app_style command");
   std::ifstream in(arg[1]);
   json j;
   in >> j;
@@ -96,6 +96,11 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
   // edge_index = edge_index.to(device);
   // batch = batch.to(device);
+  box_dims_md  = new double[3];
+  box_dims_md[0] = std::stof(arg[3]);
+  box_dims_md[1] = std::stof(arg[4]);
+  box_dims_md[2] = std::stof(arg[5]);
+
   engstyle = LINEAR;
   num_evaluations = 0;
   num_events_removed= 0;
@@ -389,9 +394,13 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   int m, mm,o, ihop;
   std::vector<int> local_neigh_check(nlocal + nghost, 0);
   std::vector<std::vector<double>> neighbor_coords(200,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> md_coords(200,std::vector<double>(3,0.0));
   std::vector<int> neighbor_types(200);
   std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};   // Coordinate of the H atom
+  std::vector<double> xmdi = {x_md[i], y_md[i], z_md[i]};
   double dist {0.0};
+  double dist_md {0.0};
+
 
 
   // loop over all possible hops, go through neighbor shell
@@ -399,7 +408,9 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   // einitial = site_energy(i);
   proball = 0.0;
   probone = 0.0;
-  
+  // The central atom itself is included in the neighbor list (To formulate complete local graph)
+  // Both its local and MD coordinates are zero.
+  neighbor_types[num_occupied_neighbors++] = lattice[i];
   // this is similar to the Potts approach
   neigh_check[i]=1;
   local_neigh_check[i]=1;
@@ -414,6 +425,10 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
       for (o=0; o<3; o++){
         neighbor_coords[num_occupied_neighbors][o] = xyz[j][o] - xi[o];
       }
+      md_coords[num_occupied_neighbors][0] = x_md[j]-xmdi[0];
+      md_coords[num_occupied_neighbors][1] = y_md[j]-xmdi[1];
+      md_coords[num_occupied_neighbors][2] = z_md[j]-xmdi[2];
+
       neighbor_types[num_occupied_neighbors++] = lattice[j];
       local_neigh_check[j]=1;
 
@@ -423,6 +438,9 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
           for (o=0; o<3; o++){
             neighbor_coords[num_occupied_neighbors][o] = xyz[m][o] - xi[o];
           }
+          md_coords[num_occupied_neighbors][0] = x_md[m]-xmdi[0];
+          md_coords[num_occupied_neighbors][1] = y_md[m]-xmdi[1];
+          md_coords[num_occupied_neighbors][2] = z_md[m]-xmdi[2];
           neighbor_types[num_occupied_neighbors++] = lattice[m];
           local_neigh_check[m]=1;
           for (ll=0; ll<numneigh[m]; ll++){
@@ -431,6 +449,9 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
               for (o=0; o<3; o++){
                 neighbor_coords[num_occupied_neighbors][o] = xyz[mm][o] - xi[o];
               }
+              md_coords[num_occupied_neighbors][0] = x_md[mm]-xmdi[0];
+              md_coords[num_occupied_neighbors][1] = y_md[mm]-xmdi[1];
+              md_coords[num_occupied_neighbors][2] = z_md[mm]-xmdi[2];
               neighbor_types[num_occupied_neighbors++] = lattice[mm];
               local_neigh_check[mm]=1;
             }
@@ -443,15 +464,23 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   for(l=0; l<num_occupied_neighbors; l++){
     for(o = 0; o<3; o++){
       dist = neighbor_coords[l][o];
-      if (dist>half_box_dims[o]) dist-=box_dims[o];
-      else if (dist<-half_box_dims[o]) dist+=box_dims[o];
+      dist_md = md_coords[l][o];
+      if (dist>half_box_dims[o]) {
+        dist-=box_dims[o];
+        dist_md -=box_dims_md[o];
+      }
+      else if (dist<-half_box_dims[o]) {
+      dist+=box_dims[o];
+      dist_md +=box_dims_md[o];
+      }
       neighbor_coords[l][o] = dist;
+      md_coords[l][o] = dist_md;
     }
   }
 
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
-    double eb = calculate_barrier_energy(i,j,neighbor_coords,neighbor_types,num_occupied_neighbors);
+    double eb = calculate_barrier_energy(i,j,neighbor_coords,md_coords,neighbor_types,num_occupied_neighbors);
     probone = (NUHOP)*exp(-eb*t_inverse);
     add_event(i,j,probone);
     proball += probone;
@@ -604,7 +633,7 @@ std::vector<int64_t> AppDiffusionMultiphaseGCN::linearize_int (const std::vector
   return B;
 }
 
-double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
+double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords,std::vector<std::vector<double>>& md_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
   int o,l, k, kk,flag;
   int src, dst;
   std::vector<int64_t> first_shell(42,0);
@@ -620,6 +649,8 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   std::vector<std::vector<double>> rotated_cs(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
+  std::vector<std::vector<double>> rotated_coords_md(num_occupied_sites,std::vector<double>(3,0.0));
+
   std::vector<std::vector<double>> selected_coords(42, std::vector<double>(3,0.0));
   std::vector<float> edge_attr_vec(edge_index_vec.size(),0.0);
   for ( o=0; o<3; o++){
@@ -653,6 +684,7 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   // Rotating the local coordinates with R
   for ( k = 0; k<num_occupied_sites;k++){
     rotated_coords[k] = mat_vecmul(R,local_coords[k]);
+    rotated_coords_md[k] = mat_vecmul(R,md_coords[k]);
   }
  //Checking the occupancy of the local coordinates
   for (k =0; k<num_occupied_sites;k++){
@@ -667,7 +699,7 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
       if(flag==1){
         first_shell[kk] = neighbor_types[k]-1; // Mapping Ni=0, H=1, V=2 -- as defined in the GCN 
         for (o=0; o<3;o++){
-          selected_coords[kk][o] = rotated_coords[k][o];
+          selected_coords[kk][o] = rotated_coords_md[k][o];
         }
         break;
       }                                                                                      
@@ -676,7 +708,7 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   for (l=0;l<edge_index_vec.size(); l++){
     src = edge_index_vec[l][0];
     dst = edge_index_vec[l][1];
-    edge_attr_vec[l] = 3.5295*calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
+    edge_attr_vec[l] = calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
   }
   // Call the torch GCN model here
   torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();

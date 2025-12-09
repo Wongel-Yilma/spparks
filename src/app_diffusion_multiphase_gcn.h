@@ -75,6 +75,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
 
   double *box_dims;
   double *half_box_dims;
+  double *box_dims_md;
   struct Event {           // one event for an owned site
     double propensity;     // propensity of this event
     int destination;       // local ID of destination site
@@ -106,7 +107,7 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   double vec_dot(const std::vector<double> &,const std::vector<double> &);
   double vec_norm(const std::vector<double> &);
   std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
-  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &, std::vector<int>&, int );
+  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &,std::vector<std::vector <double>>&, std::vector<int>&, int );
   double calculate_distance(const std::vector<double> &, const std::vector<double> &);
   std::vector<int64_t> linearize_int(const std::vector<std::vector<int64_t>> &);
   void allocate_data();
