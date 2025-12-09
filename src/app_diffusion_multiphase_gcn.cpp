@@ -153,44 +153,7 @@ void AppDiffusionMultiphaseGCN::input_app(char *command, int narg, char **arg)
   if (strcmp(command,"diffusion/multiphase") == 0) 
     parse_diffmultiphase(narg,arg);
   else error->all(FLERR,"Unrecognized command");
-  std::vector<double>V_coords (3,0.0);
-  int m;
-  int num_sites = 16*domain->nx*domain->ny*domain->nz;
-  // Loop over vacancy sites and set their darray values to their neighboring Ni sites
-  for (int k = 0; k<num_sites; k++){
-    if (lattice[k]==V){
-      for (int kk=0; kk<numneigh[k];kk++){
-        m = neighbor[k][kk];
-        if (lattice[m]==NI){
-          V_coords[0] += darray[0][m];
-          if (xyz[m][0]-xyz[k][0]>half_box_dims[0]){
-            V_coords[0] -= box_dims_md[0];
-          }
-          else if (xyz[m][0]-xyz[k][0]<-half_box_dims[0]){
-            V_coords[0] += box_dims_md[0];
-          }
-          V_coords[1] += darray[1][m];
-          if (xyz[m][1]-xyz[k][1]>half_box_dims[1]){
-            V_coords[1] -= box_dims_md[1];
-          }
-          else if (xyz[m][1]-xyz[k][1]<-half_box_dims[1]){
-            V_coords[1] += box_dims_md[1];
-          }
-          V_coords[2] += darray[2][m];
-          if (xyz[m][2]-xyz[k][2]>half_box_dims[2]){
-            V_coords[2] -= box_dims_md[2];
-          }
-          else if (xyz[m][2]-xyz[k][2]<-half_box_dims[2]){
-            V_coords[2] += box_dims_md[2];
-          }
-        }
-      }
-      darray[0][k] = V_coords[0]/6.0;
-      darray[1][k] = V_coords[1]/6.0;
-      darray[2][k] = V_coords[2]/6.0;
-      for (int o=0; o<3; o++) V_coords[o]=0.0; // Setting back to zero for next vacancy site
-    }
-  }
+
 }
 
 /* ---------------------------------------------------------------------- */
@@ -303,6 +266,44 @@ void AppDiffusionMultiphaseGCN::init_app()
            weights[{q,p}] = 1.0;
          }
        }
+     }
+   }
+   std::vector<double>V_coords (3,0.0);
+   int m;
+   int num_sites = nlocal+nghost;
+   // Loop over vacancy sites and set their darray values to their neighboring Ni sites
+   for (int k = 0; k<num_sites; k++){
+     if (lattice[k]==V){
+       for (int kk=0; kk<numneigh[k];kk++){
+         m = neighbor[k][kk];
+         if (lattice[m]==NI){
+           V_coords[0] += darray[0][m];
+           if (xyz[m][0]-xyz[k][0]>half_box_dims[0]){
+             V_coords[0] -= box_dims_md[0];
+           }
+           else if (xyz[m][0]-xyz[k][0]<-half_box_dims[0]){
+             V_coords[0] += box_dims_md[0];
+           }
+           V_coords[1] += darray[1][m];
+           if (xyz[m][1]-xyz[k][1]>half_box_dims[1]){
+             V_coords[1] -= box_dims_md[1];
+           }
+           else if (xyz[m][1]-xyz[k][1]<-half_box_dims[1]){
+             V_coords[1] += box_dims_md[1];
+           }
+           V_coords[2] += darray[2][m];
+           if (xyz[m][2]-xyz[k][2]>half_box_dims[2]){
+             V_coords[2] -= box_dims_md[2];
+           }
+           else if (xyz[m][2]-xyz[k][2]<-half_box_dims[2]){
+             V_coords[2] += box_dims_md[2];
+           }
+         }
+       }
+       darray[0][k] = V_coords[0]/6.0;
+       darray[1][k] = V_coords[1]/6.0;
+       darray[2][k] = V_coords[2]/6.0;
+       for (int o=0; o<3; o++) V_coords[o]=0.0; // Setting back to zero for next vacancy site
      }
    }
 }
