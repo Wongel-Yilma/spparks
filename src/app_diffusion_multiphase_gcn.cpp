@@ -19,6 +19,7 @@
 #include "random_park.h"
 #include "memory.h"
 #include "error.h"
+#include "comm_lattice.h"
 #include "app_diffusion_multiphase_gcn.h"
 #include <vector>
 #include "json.hpp"
@@ -268,44 +269,7 @@ void AppDiffusionMultiphaseGCN::init_app()
        }
      }
    }
-   std::vector<double>V_coords (3,0.0);
-   int m;
-   int num_sites = nlocal+nghost;
-   // Loop over vacancy sites and set their darray values to their neighboring Ni sites
-   for (int k = 0; k<num_sites; k++){
-     if (lattice[k]==V){
-       for (int kk=0; kk<numneigh[k];kk++){
-         m = neighbor[k][kk];
-         if (lattice[m]==NI){
-           V_coords[0] += darray[0][m];
-           if (xyz[m][0]-xyz[k][0]>half_box_dims[0]){
-             V_coords[0] -= box_dims_md[0];
-           }
-           else if (xyz[m][0]-xyz[k][0]<-half_box_dims[0]){
-             V_coords[0] += box_dims_md[0];
-           }
-           V_coords[1] += darray[1][m];
-           if (xyz[m][1]-xyz[k][1]>half_box_dims[1]){
-             V_coords[1] -= box_dims_md[1];
-           }
-           else if (xyz[m][1]-xyz[k][1]<-half_box_dims[1]){
-             V_coords[1] += box_dims_md[1];
-           }
-           V_coords[2] += darray[2][m];
-           if (xyz[m][2]-xyz[k][2]>half_box_dims[2]){
-             V_coords[2] -= box_dims_md[2];
-           }
-           else if (xyz[m][2]-xyz[k][2]<-half_box_dims[2]){
-             V_coords[2] += box_dims_md[2];
-           }
-         }
-       }
-       darray[0][k] = V_coords[0]/6.0;
-       darray[1][k] = V_coords[1]/6.0;
-       darray[2][k] = V_coords[2]/6.0;
-       for (int o=0; o<3; o++) V_coords[o]=0.0; // Setting back to zero for next vacancy site
-     }
-   }
+   
 }
 
 /* ----------------------------------------------------------------------
@@ -317,11 +281,61 @@ void AppDiffusionMultiphaseGCN::setup_app()
   for (int i = 0; i < nlocal+nghost; i++) echeck[i] = 0;
 
   // clear event list
-
   nevents = 0;
   for (int i = 0; i < nlocal; i++) firstevent[i] = -1;
   for (int i = 0; i < maxevent; i++) events[i].next = i+1;
   freeevent = 0;
+
+
+  comm->all();
+
+  std::vector<double>V_coords (3,0.0);
+  int m;
+  int num_sites = nlocal+nghost;
+  int zero_type_count =0;
+  // Loop over vacancy sites and set their darray values to their neighboring Ni sites
+  for (int k = 0; k<num_sites; k++){
+  
+    if (iarray[0][k]==V){
+      int num_Ni_neighbors =0;
+    //   // std::cout<<"Rank "<< me << " processing vacancy site " << k << std::endl;
+      // for (int kk=0; kk<numneigh[k];kk++){
+        for (int kk=0; kk< 6; kk++){
+          m = neighbor[k][kk];
+          if (iarray[0][m]==ZERO){
+            zero_type_count++;
+            continue;
+          }
+          V_coords[0] += darray[0][m];
+          if (xyz[m][0]-xyz[k][0]>half_box_dims[0]){
+            V_coords[0] -= box_dims_md[0];
+          }
+          else if (xyz[m][0]-xyz[k][0]<-half_box_dims[0]){
+            V_coords[0] += box_dims_md[0];
+          }
+          V_coords[1] += darray[1][m];
+          if (xyz[m][1]-xyz[k][1]>half_box_dims[1]){
+            V_coords[1] -= box_dims_md[1];
+          }
+          else if (xyz[m][1]-xyz[k][1]<-half_box_dims[1]){
+            V_coords[1] += box_dims_md[1];
+          }
+          V_coords[2] += darray[2][m];
+          if (xyz[m][2]-xyz[k][2]>half_box_dims[2]){
+            V_coords[2] -= box_dims_md[2];
+          }
+          else if (xyz[m][2]-xyz[k][2]<-half_box_dims[2]){
+            V_coords[2] += box_dims_md[2];
+          }
+        // }
+      }
+      darray[0][k] = V_coords[0]/6.0;
+      darray[1][k] = V_coords[1]/6.0;
+      darray[2][k] = V_coords[2]/6.0;
+      for (int o=0; o<3; o++) V_coords[o]=0.0; // Setting back to zero for next vacancy site
+    }
+  }
+  std::cout<< "Rank " << me << " has " << zero_type_count << " ZERO type sites "<< std::endl;
 }
 
 /* ----------------------------------------------------------------------
@@ -423,10 +437,19 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   // add event if neighbor sites are Vacancy sites
   
   clear_events(i);
+  // if (lattice[i]==V){
+  //   int num_Ni_neighbors =0;
+  //   for (k = 0; k < numneigh[i]; k++) {
+  //     j = neighbor[i][k];
+  //     if (lattice[j]==NI) num_Ni_neighbors++;
+  //   }
+  //   std::cout<<"Rank "<< me << " processing H site " << i << " num sites " << nlocal +nghost<< std::endl;
+  //   assert (num_Ni_neighbors==6), "H site does not have 6 Ni neighbors";
+  // }
   
   // if (is_pinned[lattice[i]]) return 0.0;
   if (lattice[i]!=H) return 0.0;    // only allow phase '2' or 'H' to undergo diffusion jumps
-  
+
   int nhop1 {0};
   int num_occupied_neighbors {0};
   int l, ll;
