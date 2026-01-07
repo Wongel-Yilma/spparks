@@ -119,16 +119,16 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 
 AppDiffusionMultiphaseGCN::~AppDiffusionMultiphaseGCN()
 {
-  std::string file_name = "event_stats"+std::to_string(me)+".png";
-  // std::string file_name_eb = "eb"+std::to_string(me)+".png";
+  // std::string file_name = "event_stats"+std::to_string(me)+".png";
+  std::string file_name_eb = "eb"+std::to_string(me)+".png";
 
-  plt::plot(active_events, "b-");
-  plt::plot(removed_events, "r-");
-  plt::plot(all_events_generated, "g-");
+  // plt::plot(active_events, "b-");
+  // plt::plot(removed_events, "r-");
+  // plt::plot(all_events_generated, "g-");
   // plt::show();
-  plt::save(file_name); 
-  // plt::plot(eb_values, "b-");
-  // plt::save(file_name_eb);
+  // plt::save(file_name); 
+  plt::plot(eb_values, "b-");
+  plt::save(file_name_eb);
   delete [] esites;
   delete [] echeck;
   delete [] neigh_check;
@@ -287,7 +287,7 @@ void AppDiffusionMultiphaseGCN::setup_app()
   freeevent = 0;
 
 
-  comm->all();
+  comm->all(); // Ensure per site values are communicated
 
   std::vector<double>V_coords (3,0.0);
   int m;
@@ -711,8 +711,6 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   std::vector<std::vector<double>> rotated_cs(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
   std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
-  std::vector<std::vector<double>> rotated_coords_md(num_occupied_sites,std::vector<double>(3,0.0));
-
   std::vector<std::vector<double>> selected_coords(42, std::vector<double>(3,0.0));
   std::vector<float> edge_attr_vec(edge_index_vec.size(),0.0);
   for ( o=0; o<3; o++){
@@ -746,7 +744,6 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   // Rotating the local coordinates with R
   for ( k = 0; k<num_occupied_sites;k++){
     rotated_coords[k] = mat_vecmul(R,local_coords[k]);
-    rotated_coords_md[k] = mat_vecmul(R,md_coords[k]);
   }
  //Checking the occupancy of the local coordinates
   for (k =0; k<num_occupied_sites;k++){
@@ -759,9 +756,11 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
         }
       }
       if(flag==1){
-        first_shell[kk] = neighbor_types[k]-1; // Mapping Ni=0, H=1, V=2 -- as defined in the GCN 
+        if (neighbor_types[k]==NI) first_shell[kk] = 1;
+        else if (neighbor_types[k]==H) first_shell[kk] = 2;
+        else first_shell[kk] = 0;  // Vacancy type is zero for the GCN input
         for (o=0; o<3;o++){
-          selected_coords[kk][o] = rotated_coords_md[k][o];
+          selected_coords[kk][o] = md_coords[k][o];
         }
         break;
       }                                                                                      
@@ -770,18 +769,17 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   for (l=0;l<edge_index_vec.size(); l++){
     src = edge_index_vec[l][0];
     dst = edge_index_vec[l][1];
-    edge_attr_vec[l] = calculate_distance(selected_coords[src], selected_coords[dst] ); // 3 is the number of site types
+    edge_attr_vec[l] = calculate_distance(selected_coords[src], selected_coords[dst]);
   }
-  // Call the torch GCN model here
+
   torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();
   torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
-  // atom_type= atom_type.to(device);
-  // edge_attr = edge_attr.to(device);
+
 
   std::vector<torch::jit::IValue> inputs = { atom_type ,edge_attr, batch,edge_index};
   // auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
   // Mean, std: 0.39268717 0.03553854
-  auto eb = gcn.forward(inputs).toTensor().item<double>()*0.03553854+0.39268717;
+  auto eb = gcn.forward(inputs).toTensor().item<double>()*0.03553854+0.39268717; 
   // double eb = 0.40; // Dummy value for debugging
   return eb;
 }
