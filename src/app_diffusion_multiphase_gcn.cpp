@@ -120,15 +120,21 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
 AppDiffusionMultiphaseGCN::~AppDiffusionMultiphaseGCN()
 {
   // std::string file_name = "event_stats"+std::to_string(me)+".png";
-  std::string file_name_eb = "eb"+std::to_string(me)+".png";
+  // std::string file_name_eb = "eb"+std::to_string(me)+".png";
+
+  double ave_eb {0};
+  for (int k=0; k<eb_values.size(); k++){
+     ave_eb+=eb_values[k];
+  }
+  if (eb_values.size()>0)  {std::cout<<"Average eb values: "<<ave_eb/eb_values.size()<<std::endl;}
 
   // plt::plot(active_events, "b-");
   // plt::plot(removed_events, "r-");
   // plt::plot(all_events_generated, "g-");
   // plt::show();
   // plt::save(file_name); 
-  plt::plot(eb_values, "b-");
-  plt::save(file_name_eb);
+  // plt::plot(eb_values, "b-");
+  // plt::save(file_name_eb);
   delete [] esites;
   delete [] echeck;
   delete [] neigh_check;
@@ -776,10 +782,10 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
 
 
-  std::vector<torch::jit::IValue> inputs = { atom_type ,edge_attr, batch,edge_index};
+  std::vector<torch::jit::IValue> inputs = { edge_index,atom_type ,edge_attr, batch};
   // auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
   // Mean, std: 0.39268717 0.03553854
-  auto eb = gcn.forward(inputs).toTensor().item<double>()*0.03553854+0.39268717; 
+  auto eb = gcn.forward(inputs).toTensor().item<double>(); 
   // double eb = 0.40; // Dummy value for debugging
   return eb;
 }
