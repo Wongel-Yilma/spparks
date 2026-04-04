@@ -17,6 +17,7 @@
 #include "solve.h"
 #include "domain.h"
 #include "random_park.h"
+#include "random_mars.h"
 #include "memory.h"
 #include "error.h"
 #include "comm_lattice.h"
@@ -28,6 +29,8 @@
 #include <torch/torch.h>
 #include <torch/script.h>
 #include "matplotlibcpp.h"
+#include <numeric>
+#include <algorithm>
 using namespace SPPARKS_NS;
 using json= nlohmann::json;
 using std::map;
@@ -38,10 +41,12 @@ namespace plt = matplotlibcpp;
 enum{LINEAR};
 enum {ZERO, NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
 enum {ZERO_TYPE, FCC, OCTA, TETRA};
+enum {DEP_OFF, DEP_POS, DEP_NEG};  // No, Positive or Negative deposition
 
 #define DELTAEVENT 100000
 #define NUHOP 1e13
 #define TOLERANCE 1.0e-4
+#define DELTABATCH 1024
 
 // This app is based on the diffusion app (for Kawasaki dynamics)
 // These are the significant changes and simplifications
@@ -113,6 +118,19 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   firstevent = NULL;
 
   allocated = 0;
+
+  // default settings for deposition 
+  depmode = DEP_OFF;
+  ndeposit_max = 0;
+  ndeposit_total = 0;
+  sim_progress = 0.0;
+  cummulative_ndeposit = 0;
+  rand_deposition = NULL;
+  depinfo = NULL;
+  depinfo_global = NULL;
+  depinfo_selected = NULL;
+
+  maxbatch = 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -159,6 +177,30 @@ void AppDiffusionMultiphaseGCN::input_app(char *command, int narg, char **arg)
 
   if (strcmp(command,"diffusion/multiphase") == 0) 
     parse_diffmultiphase(narg,arg);
+  else if (strcmp(command, "deposition_H")==0){
+    if (narg<1) error->all(FLERR,"Illegal H deposition command");
+    if (strcmp(arg[0],"off")==0){
+      if (narg!=1) error->all(FLERR,"Illegal H deposition commnad");
+      depmode= DEP_OFF;
+      return;
+    }
+    if (strcmp(arg[0],"positive")==0){
+      if (narg!=2) error->all(FLERR,"Illegal H deposition commnad");
+      depmode= DEP_POS;
+      ndeposit_total=std::stoi(arg[1]);
+    }
+    else if (strcmp(arg[0],"negative")==0){
+      if (narg!=2) error->all(FLERR,"Illegal H deposition commnad");
+      depmode= DEP_NEG;
+      ndeposit_total=std::stoi(arg[1]);
+    } else error->all(FLERR,"Illegal H deposition commnad");
+    
+    if (depmode==DEP_POS || depmode==DEP_NEG){
+      delete rand_deposition;
+      rand_deposition = new RandomPark(ranmaster->uniform());
+    }
+
+  }
   else error->all(FLERR,"Unrecognized command");
 
 }
@@ -276,6 +318,12 @@ void AppDiffusionMultiphaseGCN::init_app()
      }
    }
    
+  // Set up deposition
+
+  if (depmode!=DEP_OFF) allow_app_update=1;
+  else allow_app_update=0;
+
+
 }
 
 /* ----------------------------------------------------------------------
@@ -292,6 +340,8 @@ void AppDiffusionMultiphaseGCN::setup_app()
   for (int i = 0; i < maxevent; i++) events[i].next = i+1;
   freeevent = 0;
 
+  deposit_start_time = time;
+  
 
   comm->all(); // Ensure per site values are communicated
 
@@ -341,7 +391,74 @@ void AppDiffusionMultiphaseGCN::setup_app()
       for (int o=0; o<3; o++) V_coords[o]=0.0; // Setting back to zero for next vacancy site
     }
   }
-  std::cout<< "Rank " << me << " has " << zero_type_count << " ZERO type sites "<< std::endl;
+
+  // Deposit at least one atom (H or V) at a random site
+
+  if (depmode==DEP_POS|| depmode==DEP_NEG){
+    int i;
+    int num_H_V_sites=0;
+    int num_global_H_V_sites=0;
+    int n_eligible = 0;
+    int n_eligible_global = 0;
+    for (int i=0; i<nlocal; i++){
+      if (lattice[i]==H && depmode==DEP_POS) num_H_V_sites++;
+      else if (lattice[i]==V && depmode==DEP_NEG) num_H_V_sites++;
+    }
+    MPI_Allreduce(&num_H_V_sites, &num_global_H_V_sites, 1 , MPI_INT, MPI_SUM, world);
+    if (num_global_H_V_sites==0){
+      // Deposit a single H atom at a random site
+      depinfo = (DepInfo *) memory->smalloc(1*sizeof(DepInfo),"diffusion:depinfo");
+      depinfo_global =  (DepInfo *) memory->smalloc(nprocs*sizeof(DepInfo), "diffusion:depinfo_global");
+      depinfo_selected = (DepInfo *) memory->smalloc(1*sizeof(DepInfo), "diffusion:depinfo_selected");
+      for (i=0; i< nlocal; i++){
+        if ((xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==V &&depmode==DEP_POS)||
+        (xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==H &&depmode==DEP_NEG)){
+          depinfo[0].proc = me;
+          depinfo[0].site = i;
+          n_eligible++;
+          break;
+        }
+      }
+      MPI_Allreduce(&n_eligible, &n_eligible_global, 1, MPI_INT, MPI_SUM, world);
+      std::vector<int> n_eligible_local(nprocs);
+      MPI_Allgather(&n_eligible, 1, MPI_INT, n_eligible_local.data(),1, MPI_INT, world);
+      std::vector<int> displacement(nprocs);
+      std::vector<int> recvcounts(nprocs);
+      recvcounts[0] = n_eligible_local[0]*sizeof(DepInfo);
+      displacement[0] = 0;
+      for (i=1; i<nprocs; i++){
+        displacement[i] = displacement[i-1] + recvcounts[i-1];
+        recvcounts[i] = n_eligible_local[i]*sizeof(DepInfo);
+      }
+      MPI_Gatherv(depinfo, n_eligible*sizeof(DepInfo), MPI_CHAR, depinfo_global, recvcounts.data() , displacement.data() , MPI_CHAR, 0, world);
+      if(me==0){
+        int rand_int = rand_deposition->irandom(n_eligible_global)-1;
+        std::cout<< "Rank "<< me << " selected site " << rand_int << " from " << n_eligible_global << " eligible sites" << std::endl;
+        depinfo_selected[0].proc = depinfo_global[rand_int].proc;
+        depinfo_selected[0].site = depinfo_global[rand_int].site;
+      }
+      MPI_Bcast(depinfo_selected, 1*sizeof(DepInfo), MPI_CHAR, 0, world);
+      if (depinfo_selected[0].proc==me){
+        m = depinfo_selected[0].site;
+        if (depmode==DEP_POS){
+          lattice[m] = H;
+        }
+        else if (depmode==DEP_NEG){
+          lattice[m] = V;
+        }
+      }
+      memory->sfree(depinfo);
+      memory->sfree(depinfo_global);
+      memory->sfree(depinfo_selected);
+      cummulative_ndeposit++;
+      depinfo = NULL;
+      depinfo_global = NULL;
+      depinfo_selected = NULL;
+    }
+  }
+
+ 
+  comm->all();
 }
 
 /* ----------------------------------------------------------------------
@@ -789,6 +906,124 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
   // double eb = 0.40; // Dummy value for debugging
   return eb;
 }
+
+void AppDiffusionMultiphaseGCN::shuffle_indices(std::vector<int>& indices, class RandomPark* random)
+{
+  int i,j;
+  int n = indices.size();
+  for ( i = n-1; i>0; i--){
+    j = random->irandom(i+1)-1; // Generate a random index between 0 and i
+    if (i!=j)std::swap(indices[i], indices[j]); // Swap the elements at indices i and j
+  }
+}
+
+
+void AppDiffusionMultiphaseGCN::app_update(double t_sweep)
+{
+  if (depmode==DEP_OFF) return;  // Guard to prevent deposition when deposition is off
+  if (cummulative_ndeposit>=ndeposit_total) return;  // Guard to prevent deposition when the total number of deposition is reached
+  int i,m;
+  int ndeposit_per_sweep = 0;
+  sim_progress = (time+t_sweep-deposit_start_time)/(stoptime-deposit_start_time); // Calculating the simulation progress 
+  if (sim_progress<1.0){ // The simulation is not complete, depositing the atoms for the current sweep
+    ndeposit_per_sweep = static_cast<int>(ndeposit_total*sim_progress)-cummulative_ndeposit;// Deposition per sweep
+  }
+  else{ // The simulation is complete, depositing the remaining atoms
+    ndeposit_per_sweep = ndeposit_total-cummulative_ndeposit;
+  }
+  if (ndeposit_per_sweep<=0) return; // Guard to prevent deposition when the number of deposition is zero
+
+
+  int n_eligible=0;
+  int max_eligible= box_dims[0]*box_dims[1]*4*2;  // lattice units in x * lattice units in y *2 octahedral sites per cell * 2 middle layers
+  
+  // Allocating the data structures for the deposition sites
+  if (max_eligible > maxbatch) {
+    memory->sfree(depinfo);
+    while (max_eligible > maxbatch) maxbatch += DELTABATCH;
+    depinfo = (DepInfo *) memory->smalloc(maxbatch*sizeof(DepInfo),"diffusion:depinfo");
+  }
+
+  if (depmode==DEP_POS){
+    for (i=0; i< nlocal; i++){
+      if (xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==V){
+        depinfo[n_eligible].proc = me;
+        depinfo[n_eligible].site = i;
+        n_eligible++;
+      }
+    }
+  }
+  else if (depmode==DEP_NEG){
+    for (i=0; i< nlocal; i++){
+      if (xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==H){
+        depinfo[n_eligible].proc = me;
+        depinfo[n_eligible].site = i;
+        n_eligible++;
+      }
+    }
+  }
+
+  // Reducing the number of deposition sites to the total number of deposition sites
+  int n_eligible_global;
+  MPI_Allreduce(&n_eligible, &n_eligible_global, 1, MPI_INT, MPI_SUM, world);
+  // Allocating the data structure for the deposition sites on the root proc
+  // Gathering operations from all procs to the root proc
+  // Need to calculate the number of deposition sites on each proc
+  std::vector<int> n_eligible_local(nprocs);
+  MPI_Allgather(&n_eligible, 1, MPI_INT, n_eligible_local.data(),1, MPI_INT, world);
+  std::vector<int> displacement(nprocs);
+  std::vector<int> recvcounts(nprocs);
+  recvcounts[0] = n_eligible_local[0]*sizeof(DepInfo);
+  displacement[0] = 0;
+  for (i=1; i<nprocs; i++){
+    displacement[i] = displacement[i-1] + recvcounts[i-1];
+    recvcounts[i] = n_eligible_local[i]*sizeof(DepInfo);
+  }
+
+  memory->sfree(depinfo_global);
+  memory->sfree(depinfo_selected);
+  depinfo_global = (DepInfo *) memory->smalloc(n_eligible_global*sizeof(DepInfo),"diffusion:depinfo_global");
+  depinfo_selected = (DepInfo *) memory->smalloc(n_eligible_global*sizeof(DepInfo),"diffusion:depinfo_selected");
+  
+  MPI_Gatherv(depinfo, n_eligible*sizeof(DepInfo), MPI_CHAR, depinfo_global, recvcounts.data() , displacement.data() , MPI_CHAR, 0, world);
+  int ndeposit_max = 0;
+  
+  // selcting the deposition sites on the root proc
+  ndeposit_max = std::min(n_eligible_global, ndeposit_per_sweep);
+  
+  if (me==0){
+    std::vector<int> deposit_indices(n_eligible_global);
+    std::iota(deposit_indices.begin(), deposit_indices.end(), 0);
+    shuffle_indices(deposit_indices, rand_deposition);
+    // Copying the deposition sites to a data structure on the root proc
+    for (i=0; i<ndeposit_max; i++){
+      depinfo_selected[i] = depinfo_global[deposit_indices[i]];
+    }
+  }
+  // Broadcasting the deposition sites to all procs
+  MPI_Bcast(depinfo_selected, ndeposit_max*sizeof(DepInfo), MPI_CHAR, 0, world);
+  
+  // Depositing the atoms on the selected sites on each proc
+  for (i=0; i<ndeposit_max; i++){
+    if (depinfo_selected[i].proc !=me) continue;
+    m = depinfo_selected[i].site;
+    if (depmode==DEP_POS){
+      lattice[m] = H;
+    }
+    else if (depmode==DEP_NEG){
+      lattice[m] = V;
+    }
+  }
+
+  cummulative_ndeposit += ndeposit_max;   // Updating the cumulative number of deposition
+  comm->all();
+  update_kmc_sector_border_propensities();
+
+}
+
+
+
+
 /* ----------------------------------------------------------------------
    clear all events out of list for site I
    add cleared events to free list

@@ -98,10 +98,12 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   
   double site_propensity_linear(int);
   
-  void site_event_linear(int, class RandomPark *);
+  void site_event_linear(int, class RandomPark*);
   
   void clear_events(int);
   
+  void app_update(double );
+  void shuffle_indices(std::vector<int>&, class RandomPark*);
   void add_event(int, int, double);
   std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
   double vec_dot(const std::vector<double> &,const std::vector<double> &);
@@ -111,6 +113,26 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   double calculate_distance(const std::vector<double> &, const std::vector<double> &);
   std::vector<int64_t> linearize_int(const std::vector<std::vector<int64_t>> &);
   void allocate_data();
+
+  // Deposition parameters and data structs
+  int depmode;
+  int ndeposit_total;
+  int cummulative_ndeposit;
+  int maxbatch;
+  double deposit_start_time;
+  double sim_progress;
+  class RandomPark *rand_deposition;
+  struct DepInfo {
+    int proc;
+    int site;
+  };
+  DepInfo *depinfo;
+  DepInfo *depinfo_global;
+  DepInfo *depinfo_selected;
+
+  // Deposition stats
+  int ndeposit_max;
+  
 };
 
 }
