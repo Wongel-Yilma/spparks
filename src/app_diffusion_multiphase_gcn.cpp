@@ -140,11 +140,11 @@ AppDiffusionMultiphaseGCN::~AppDiffusionMultiphaseGCN()
   // std::string file_name = "event_stats"+std::to_string(me)+".png";
   // std::string file_name_eb = "eb"+std::to_string(me)+".png";
 
-  double ave_eb {0};
-  for (int k=0; k<eb_values.size(); k++){
-     ave_eb+=eb_values[k];
-  }
-  if (eb_values.size()>0)  {std::cout<<"Average eb values: "<<ave_eb/eb_values.size()<<std::endl;}
+  // double ave_eb {0};
+  // for (int k=0; k<eb_values.size(); k++){
+  //    ave_eb+=eb_values[k];
+  // }
+  // if (eb_values.size()>0)  {std::cout<<"Average eb values: "<<ave_eb/eb_values.size()<<std::endl;}
 
   // plt::plot(active_events, "b-");
   // plt::plot(removed_events, "r-");
@@ -400,17 +400,17 @@ void AppDiffusionMultiphaseGCN::setup_app()
     int num_global_H_V_sites=0;
     int n_eligible = 0;
     int n_eligible_global = 0;
-    for (int i=0; i<nlocal; i++){
+    for (int i=0; i<nlocal; i++){  // Counting the number of H or V sites
       if (lattice[i]==H && depmode==DEP_POS) num_H_V_sites++;
       else if (lattice[i]==V && depmode==DEP_NEG) num_H_V_sites++;
     }
     MPI_Allreduce(&num_H_V_sites, &num_global_H_V_sites, 1 , MPI_INT, MPI_SUM, world);
-    if (num_global_H_V_sites==0){
+    if (num_global_H_V_sites==0){  // If there are no H (deposition mode is positive) or V (deposition mode is negative) sites, deposit a single H or V atom at a random site
       // Deposit a single H atom at a random site
       depinfo = (DepInfo *) memory->smalloc(1*sizeof(DepInfo),"diffusion:depinfo");
       depinfo_global =  (DepInfo *) memory->smalloc(nprocs*sizeof(DepInfo), "diffusion:depinfo_global");
       depinfo_selected = (DepInfo *) memory->smalloc(1*sizeof(DepInfo), "diffusion:depinfo_selected");
-      for (i=0; i< nlocal; i++){
+      for (i=0; i< nlocal; i++){ 
         if ((xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==V &&depmode==DEP_POS)||
         (xyz[i][2]>-0.6 && xyz[i][2]<0.1 && lattice[i]==H &&depmode==DEP_NEG)){
           depinfo[0].proc = me;
@@ -419,6 +419,7 @@ void AppDiffusionMultiphaseGCN::setup_app()
           break;
         }
       }
+      // Gathering the number of eligible sites from all procs
       MPI_Allreduce(&n_eligible, &n_eligible_global, 1, MPI_INT, MPI_SUM, world);
       std::vector<int> n_eligible_local(nprocs);
       MPI_Allgather(&n_eligible, 1, MPI_INT, n_eligible_local.data(),1, MPI_INT, world);
@@ -431,14 +432,16 @@ void AppDiffusionMultiphaseGCN::setup_app()
         recvcounts[i] = n_eligible_local[i]*sizeof(DepInfo);
       }
       MPI_Gatherv(depinfo, n_eligible*sizeof(DepInfo), MPI_CHAR, depinfo_global, recvcounts.data() , displacement.data() , MPI_CHAR, 0, world);
-      if(me==0){
+     
+      if(me==0){  // Selecting a random site from the eligible sites on the root proc
         int rand_int = rand_deposition->irandom(n_eligible_global)-1;
-        std::cout<< "Rank "<< me << " selected site " << rand_int << " from " << n_eligible_global << " eligible sites" << std::endl;
+        // std::cout<< "Rank "<< me << " selected site " << rand_int << " from " << n_eligible_global << " eligible sites" << std::endl;
         depinfo_selected[0].proc = depinfo_global[rand_int].proc;
         depinfo_selected[0].site = depinfo_global[rand_int].site;
       }
+      // Broadcasting the selected site for deposition/deletion to all procs
       MPI_Bcast(depinfo_selected, 1*sizeof(DepInfo), MPI_CHAR, 0, world);
-      if (depinfo_selected[0].proc==me){
+      if (depinfo_selected[0].proc==me){  // Depositing the atom on the selected site on this proc
         m = depinfo_selected[0].site;
         if (depmode==DEP_POS){
           lattice[m] = H;
@@ -447,11 +450,12 @@ void AppDiffusionMultiphaseGCN::setup_app()
           lattice[m] = V;
         }
       }
+      // Freeing the memory for the deposition sites
       memory->sfree(depinfo);
       memory->sfree(depinfo_global);
       memory->sfree(depinfo_selected);
-      cummulative_ndeposit++;
-      depinfo = NULL;
+      cummulative_ndeposit++;  // Updating the cumulative number of deposition
+      depinfo = NULL;  // Setting the pointers to NULL
       depinfo_global = NULL;
       depinfo_selected = NULL;
     }
