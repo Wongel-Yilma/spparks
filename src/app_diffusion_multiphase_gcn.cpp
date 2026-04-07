@@ -92,7 +92,6 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   gcn = torch::jit::load(arg[2]);
   gnn_edge_size = edge_index_vec.size();
   gnn_node_size = first_shell_coords.size();
-  // gcn.to(device);
   batch =  torch::zeros({gnn_node_size}, torch::dtype(torch::kLong));
   edge_index_linearized = linearize_int(edge_index_vec);
   edge_index = torch::from_blob(edge_index_linearized.data(), {2,gnn_edge_size}, torch::dtype(torch::kLong)).clone();
