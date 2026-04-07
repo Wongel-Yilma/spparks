@@ -49,8 +49,6 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   int allocated;
   int *esites;
   int *echeck;
-  int num_evaluations;
-  int num_events_removed;
   int dimension;
   int *lattice;
   int *type;
@@ -65,17 +63,22 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   torch::jit::script::Module gcn;
   std::vector<int64_t> edge_index_linearized;
   torch::Tensor edge_index;
-
-  ///// Debugging vectors /////
-  std::vector<int> removed_events;
-  std::vector<int> active_events;
-  std::vector<int> all_events_generated;
-  std::vector<double>eb_values;
+  int64_t gnn_edge_size;
+  int64_t gnn_node_size;
+  
+  ///// Debugging variables for statistics /////
+  // int num_evaluations;
+  // int num_events_removed;
+  // std::vector<int> removed_events;
+  // std::vector<int> active_events;
+  // std::vector<int> all_events_generated;
+  // std::vector<double>eb_values;
   //////////////////////
 
   double *box_dims;
   double *half_box_dims;
   double *box_dims_md;
+
   struct Event {           // one event for an owned site
     double propensity;     // propensity of this event
     int destination;       // local ID of destination site
@@ -96,25 +99,50 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   std::map<std::pair<int,int>,double> weights;
   void parse_diffmultiphase(int narg, char **arg);
   
-  double site_propensity_linear(int);
-  
   void site_event_linear(int, class RandomPark*);
-  
   void clear_events(int);
-  
-  void app_update(double );
-  void shuffle_indices(std::vector<int>&, class RandomPark*);
   void add_event(int, int, double);
-  std::vector<double> mat_vecmul(const std::vector<std::vector<double>> &,const std::vector<double> &);
+
+  /* ----------------------------------------------------------------------
+  Function and Variable definitions for jump rate calculation
+  ---------------------------------------------------------------------- */
+
+  // jump rate calculation
+  double site_propensity_linear(int);
+  // Class variables for jump rate calculation
+  std::vector<int> local_neigh_check;
+  std::vector<int> neigh_types;
+  std::vector<double> xi;
+  std::vector<double> xmdi;
+  std::vector<double> kmc_coords;
+  std::vector<double> md_coords;
+  // helper functions for jump rate calculation
+  double calculate_barrier_energy(int, int, int );
+  // variables definition for calculating the barrier energy
+  std::vector<int64_t> first_shell;
+  std::vector<double> new_x;
+  std::vector<double> new_y;
+  std::vector<double> new_z;
+  std::vector<std::vector<double>> original_cs;
+  std::vector<std::vector<double>> rotated_cs;
+  std::vector<std::vector<double>> R;
+  std::vector<double> rotated_coords;
+  std::vector<double> selected_coords;
+  std::vector<float> edge_attr_vec;
+  // helper functions for calculating the barrier energy
+  void rotate_vectors( int num_vectors);
+  void reset_vectors();
   double vec_dot(const std::vector<double> &,const std::vector<double> &);
   double vec_norm(const std::vector<double> &);
   std::vector<double> vec_cross(const std::vector<double> &,const std::vector<double> &);
-  double calculate_barrier_energy(int, int,std::vector<std::vector <double>> &,std::vector<std::vector <double>>&, std::vector<int>&, int );
-  double calculate_distance(const std::vector<double> &, const std::vector<double> &);
+  double calculate_distance(int , int);
   std::vector<int64_t> linearize_int(const std::vector<std::vector<int64_t>> &);
-  void allocate_data();
-
-  // Deposition parameters and data structs
+  
+  /* ----------------------------------------------------------------------
+    Function and Variable definitions for Deposition of H or Vacancy
+  ---------------------------------------------------------------------- */
+  void app_update(double );
+  void shuffle_indices(std::vector<int>&, class RandomPark*);
   int depmode;
   int ndeposit_total;
   int cummulative_ndeposit;
@@ -129,10 +157,10 @@ class AppDiffusionMultiphaseGCN : public AppLattice {
   DepInfo *depinfo;
   DepInfo *depinfo_global;
   DepInfo *depinfo_selected;
-
-  // Deposition stats
-  int ndeposit_max;
   
+
+  
+  void allocate_data();
 };
 
 }
