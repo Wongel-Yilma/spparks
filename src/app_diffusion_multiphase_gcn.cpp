@@ -28,7 +28,7 @@
 #include <cmath>
 #include <torch/torch.h>
 #include <torch/script.h>
-#include "matplotlibcpp.h"
+// #include "matplotlibcpp.h"
 #include <numeric>
 #include <algorithm>
 using namespace SPPARKS_NS;
@@ -36,7 +36,7 @@ using json= nlohmann::json;
 using std::map;
 using std::set;
 
-namespace plt = matplotlibcpp;
+// namespace plt = matplotlibcpp;
 
 enum{LINEAR};
 enum {ZERO, NI, H, V, T};   // $ types of sites Ni, H, V, Tetrahedral(Pinned vacancy)
@@ -47,6 +47,7 @@ enum {DEP_OFF, DEP_POS, DEP_NEG};  // No, Positive or Negative deposition
 #define NUHOP 1e13
 #define TOLERANCE 1.0e-4
 #define DELTABATCH 1024
+#define MAX_NEIGH_SIZE 200
 
 // This app is based on the diffusion app (for Kawasaki dynamics)
 // These are the significant changes and simplifications
@@ -73,14 +74,7 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   allow_rejection = 1;
   allow_masking = 0;
   numrandom = 1;
-  neigh_check = NULL;
   hopsite = NULL;
-  // Check if CUDA is available
-  // if (device == torch::kCPU) {
-  //   std::cout << "CUDA is not available. Using CPU." << std::endl;
-  // } else {
-  //   std::cout << "CUDA is available! Running Eb calculation on GPU." << std::endl;
-  // }
 
   torch::set_num_threads(1);
   torch::set_num_interop_threads(1);
@@ -96,10 +90,11 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   first_shell_coords = j["coords"];
   destinations = j["octa_destinations"];
   gcn = torch::jit::load(arg[2]);
-  // gcn.to(device);
-  batch =  torch::zeros({42}, torch::dtype(torch::kLong));
+  gnn_edge_size = edge_index_vec.size();
+  gnn_node_size = first_shell_coords.size();
+  batch =  torch::zeros({gnn_node_size}, torch::dtype(torch::kLong));
   edge_index_linearized = linearize_int(edge_index_vec);
-  edge_index = torch::from_blob(edge_index_linearized.data(), {2,478}, torch::dtype(torch::kLong)).clone();
+  edge_index = torch::from_blob(edge_index_linearized.data(), {2,gnn_edge_size}, torch::dtype(torch::kLong)).clone();
   // edge_index = edge_index.to(device);
   // batch = batch.to(device);
   box_dims_md  = new double[3];
@@ -108,8 +103,8 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   box_dims_md[2] = std::stof(arg[5]);
 
   engstyle = LINEAR;
-  num_evaluations = 0;
-  num_events_removed= 0;
+  // num_evaluations = 0;
+  // num_events_removed= 0;
   create_arrays();
   esites = NULL;
   echeck = NULL;
@@ -118,10 +113,10 @@ AppDiffusionMultiphaseGCN::AppDiffusionMultiphaseGCN(SPPARKS *spk, int narg, cha
   firstevent = NULL;
 
   allocated = 0;
+  // Default values for jump rate calculation
 
   // default settings for deposition 
   depmode = DEP_OFF;
-  ndeposit_max = 0;
   ndeposit_total = 0;
   sim_progress = 0.0;
   cummulative_ndeposit = 0;
@@ -155,7 +150,7 @@ AppDiffusionMultiphaseGCN::~AppDiffusionMultiphaseGCN()
   // plt::save(file_name_eb);
   delete [] esites;
   delete [] echeck;
-  delete [] neigh_check;
+  delete [] box_dims_md;
   memory->sfree(events);
   memory->destroy(firstevent);
 }
@@ -180,20 +175,20 @@ void AppDiffusionMultiphaseGCN::input_app(char *command, int narg, char **arg)
   else if (strcmp(command, "deposition_H")==0){
     if (narg<1) error->all(FLERR,"Illegal H deposition command");
     if (strcmp(arg[0],"off")==0){
-      if (narg!=1) error->all(FLERR,"Illegal H deposition commnad");
+      if (narg!=1) error->all(FLERR,"Illegal H deposition command");
       depmode= DEP_OFF;
       return;
     }
     if (strcmp(arg[0],"positive")==0){
-      if (narg!=2) error->all(FLERR,"Illegal H deposition commnad");
+      if (narg!=2) error->all(FLERR,"Illegal H deposition command");
       depmode= DEP_POS;
       ndeposit_total=std::stoi(arg[1]);
     }
     else if (strcmp(arg[0],"negative")==0){
-      if (narg!=2) error->all(FLERR,"Illegal H deposition commnad");
+      if (narg!=2) error->all(FLERR,"Illegal H deposition command");
       depmode= DEP_NEG;
       ndeposit_total=std::stoi(arg[1]);
-    } else error->all(FLERR,"Illegal H deposition commnad");
+    } else error->all(FLERR,"Illegal H deposition command");
     
     if (depmode==DEP_POS || depmode==DEP_NEG){
       delete rand_deposition;
@@ -285,7 +280,6 @@ void AppDiffusionMultiphaseGCN::init_app()
    if (!allocated) allocate_data();
    allocated = 1;
 
-   dimension = domain->dimension;
    dt_sweep = 1.0/maxneigh;
 
    {
@@ -348,8 +342,12 @@ void AppDiffusionMultiphaseGCN::setup_app()
   std::vector<double>V_coords (3,0.0);
   int m;
   int num_sites = nlocal+nghost;
-  int zero_type_count =0;
-  // Loop over vacancy sites and set their darray values to their neighboring Ni sites
+  // int zero_type_count =0;
+  /*
+    Loop over vacancy sites and set their darray values to the average of the neighboring Ni sites, 
+    and the average of the neighboring Ni sites' MD coordinates
+    This is done to ensure that the vacancy sites are placed in the center of the Ni sites
+  */
   for (int k = 0; k<num_sites; k++){
   
     if (iarray[0][k]==V){
@@ -359,7 +357,7 @@ void AppDiffusionMultiphaseGCN::setup_app()
         for (int kk=0; kk< 6; kk++){
           m = neighbor[k][kk];
           if (iarray[0][m]==ZERO){
-            zero_type_count++;
+            // zero_type_count++;
             continue;
           }
           V_coords[0] += darray[0][m];
@@ -564,33 +562,24 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   // add event if neighbor sites are Vacancy sites
   
   clear_events(i);
-  // if (lattice[i]==V){
-  //   int num_Ni_neighbors =0;
-  //   for (k = 0; k < numneigh[i]; k++) {
-  //     j = neighbor[i][k];
-  //     if (lattice[j]==NI) num_Ni_neighbors++;
-  //   }
-  //   std::cout<<"Rank "<< me << " processing H site " << i << " num sites " << nlocal +nghost<< std::endl;
-  //   assert (num_Ni_neighbors==6), "H site does not have 6 Ni neighbors";
-  // }
-  
-  // if (is_pinned[lattice[i]]) return 0.0;
+
   if (lattice[i]!=H) return 0.0;    // only allow phase '2' or 'H' to undergo diffusion jumps
 
-  int nhop1 {0};
-  int num_occupied_neighbors {0};
+  int nhop1 =0;
+  int num_occupied_neighbors =0;
   int l, ll;
   int m, mm,o, ihop;
-  std::vector<int> local_neigh_check(nlocal + nghost, 0);
-  std::vector<std::vector<double>> neighbor_coords(200,std::vector<double>(3,0.0));
-  std::vector<std::vector<double>> md_coords(200,std::vector<double>(3,0.0));
-  std::vector<int> neighbor_types(200);
-  std::vector<double> xi = {xyz[i][0], xyz[i][1], xyz[i][2]};   // Coordinate of the H atom
-  std::vector<double> xmdi = {x_md[i], y_md[i], z_md[i]};
-  double dist {0.0};
-  double dist_md {0.0};
+  double dist =0.0;
+  double dist_md =0.0;
 
+  // Assign the local and MD coordinates of the central atom
 
+  xi[0] = xyz[i][0];
+  xi[1] = xyz[i][1];
+  xi[2] = xyz[i][2];
+  xmdi[0] = x_md[i];
+  xmdi[1] = y_md[i];
+  xmdi[2] = z_md[i];
 
   // loop over all possible hops, go through neighbor shell
 
@@ -599,9 +588,8 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
   probone = 0.0;
   // The central atom itself is included in the neighbor list (To formulate complete local graph)
   // Both its local and MD coordinates are zero.
-  neighbor_types[num_occupied_neighbors++] = lattice[i];
+  neigh_types[num_occupied_neighbors++] = lattice[i];
   // this is similar to the Potts approach
-  neigh_check[i]=1;
   local_neigh_check[i]=1;
   for (k = 0; k < numneigh[i]; k++) {
     j = neighbor[i][k];
@@ -612,36 +600,36 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
     if (lattice[j]==T) continue; // Tetrahedral sites are ignored
     else{  // Loop through the second neighbor and 
       for (o=0; o<3; o++){
-        neighbor_coords[num_occupied_neighbors][o] = xyz[j][o] - xi[o];
+        kmc_coords[num_occupied_neighbors*3+o] = xyz[j][o] - xi[o];
       }
-      md_coords[num_occupied_neighbors][0] = x_md[j]-xmdi[0];
-      md_coords[num_occupied_neighbors][1] = y_md[j]-xmdi[1];
-      md_coords[num_occupied_neighbors][2] = z_md[j]-xmdi[2];
-
-      neighbor_types[num_occupied_neighbors++] = lattice[j];
+      md_coords[num_occupied_neighbors*3] = x_md[j]-xmdi[0];
+      md_coords[num_occupied_neighbors*3+1] = y_md[j]-xmdi[1];
+      md_coords[num_occupied_neighbors*3+2] = z_md[j]-xmdi[2];
+      neigh_types[num_occupied_neighbors++] = lattice[j];
       local_neigh_check[j]=1;
 
       for (l=0; l<numneigh[j]; l++){
         m = neighbor[j][l];
         if (lattice[m]!=T && local_neigh_check[m]==0){
           for (o=0; o<3; o++){
-            neighbor_coords[num_occupied_neighbors][o] = xyz[m][o] - xi[o];
+            kmc_coords[num_occupied_neighbors *3 + o] = xyz[m][o] - xi[o];
           }
-          md_coords[num_occupied_neighbors][0] = x_md[m]-xmdi[0];
-          md_coords[num_occupied_neighbors][1] = y_md[m]-xmdi[1];
-          md_coords[num_occupied_neighbors][2] = z_md[m]-xmdi[2];
-          neighbor_types[num_occupied_neighbors++] = lattice[m];
+          md_coords[num_occupied_neighbors*3] = x_md[m]-xmdi[0];
+          md_coords[num_occupied_neighbors*3+1] = y_md[m]-xmdi[1];
+          md_coords[num_occupied_neighbors*3+2] = z_md[m]-xmdi[2];
+          neigh_types[num_occupied_neighbors++] = lattice[m];
           local_neigh_check[m]=1;
+
           for (ll=0; ll<numneigh[m]; ll++){
             mm = neighbor[m][ll];
             if (lattice[mm]==NI && local_neigh_check[mm]==0){
               for (o=0; o<3; o++){
-                neighbor_coords[num_occupied_neighbors][o] = xyz[mm][o] - xi[o];
+                kmc_coords[num_occupied_neighbors*3+o] = xyz[mm][o] - xi[o];
               }
-              md_coords[num_occupied_neighbors][0] = x_md[mm]-xmdi[0];
-              md_coords[num_occupied_neighbors][1] = y_md[mm]-xmdi[1];
-              md_coords[num_occupied_neighbors][2] = z_md[mm]-xmdi[2];
-              neighbor_types[num_occupied_neighbors++] = lattice[mm];
+              md_coords[num_occupied_neighbors*3] = x_md[mm]-xmdi[0];
+              md_coords[num_occupied_neighbors*3+1] = y_md[mm]-xmdi[1];
+              md_coords[num_occupied_neighbors*3+2] = z_md[mm]-xmdi[2];
+              neigh_types[num_occupied_neighbors++] = lattice[mm];
               local_neigh_check[mm]=1;
             }
           }
@@ -652,8 +640,8 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
 
   for(l=0; l<num_occupied_neighbors; l++){
     for(o = 0; o<3; o++){
-      dist = neighbor_coords[l][o];
-      dist_md = md_coords[l][o];
+      dist = kmc_coords[l*3+o];
+      dist_md = md_coords[l*3+o];
       if (dist>half_box_dims[o]) {
         dist-=box_dims[o];
         dist_md -=box_dims_md[o];
@@ -662,19 +650,20 @@ double AppDiffusionMultiphaseGCN::site_propensity_linear(int i)
       dist+=box_dims[o];
       dist_md +=box_dims_md[o];
       }
-      neighbor_coords[l][o] = dist;
-      md_coords[l][o] = dist_md;
+      kmc_coords[l*3+o] = dist;
+      md_coords[l*3+o] = dist_md;
     }
   }
 
+    // Calculating the jump rate for the possible hops
   for(ihop= 0; ihop<nhop1; ihop++){
     j =  hopsite[ihop];
-    double eb = calculate_barrier_energy(i,j,neighbor_coords,md_coords,neighbor_types,num_occupied_neighbors);
+    double eb = calculate_barrier_energy(i,j,num_occupied_neighbors);
     probone = (NUHOP)*exp(-eb*t_inverse);
     add_event(i,j,probone);
     proball += probone;
-    num_evaluations++;
-    eb_values.push_back(eb);
+    // num_evaluations++;
+    // eb_values.push_back(eb);
   }
  for ( l = 0; l < nlocal + nghost; l++) local_neigh_check[l] = 0;
   return proball;
@@ -703,9 +692,9 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
   // std::cout<< "Number of Events: " << nevents << std::endl;
   // std::cout<< "Number of Events decreased: " << num_events_removed << std::endl;
 
-  removed_events.push_back(num_events_removed);
-  active_events.push_back(nevents);
-  all_events_generated.push_back(num_evaluations);
+  // removed_events.push_back(num_events_removed);
+  // active_events.push_back(nevents);
+  // all_events_generated.push_back(num_evaluations);
 
 
   double threshhold = random->uniform() * propensity[i2site[i]];
@@ -775,8 +764,12 @@ void AppDiffusionMultiphaseGCN::site_event_linear(int i, class RandomPark *rando
   for (k = 0; k < nsites; k++) echeck[esites[k]] = 0;
 }
 
-double AppDiffusionMultiphaseGCN::calculate_distance(const std::vector<double> &a,const std::vector<double> &b){
-  return std::sqrt(std::pow((a[0]-b[0]),2)+std::pow((a[1]-b[1]),2)+std::pow((a[2]-b[2]),2));
+double AppDiffusionMultiphaseGCN::calculate_distance(int src, int dst){
+  double dist_squared = 0.0;
+  for (int o=0; o<3; o++){
+    dist_squared += (selected_coords[src*3+o]-selected_coords[dst*3+o])*(selected_coords[src*3+o]-selected_coords[dst*3+o]);
+  }
+  return std::sqrt(dist_squared);
 }
 
 double AppDiffusionMultiphaseGCN::vec_dot(const std::vector<double> &a,const std::vector<double> &b){
@@ -796,19 +789,20 @@ double AppDiffusionMultiphaseGCN::vec_norm(const std::vector<double> &a){
   double c = std::sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]);
   return c;
 }
-std::vector<double> AppDiffusionMultiphaseGCN::mat_vecmul(const std::vector<std::vector<double>> &B,const std::vector<double> &a){
+void AppDiffusionMultiphaseGCN::rotate_vectors(int num_occupied_sites){
   
-  int m = a.size();
-  int p = B.size();
-  int q = B[0].size();
-  std::vector<double> c(q,0.0);
-  for (size_t i =0; i<p;i++){
-      for(size_t k=0; k<m; k++){
-          c[i] +=  B[k][i]*a[k];
+  int p = 3;
+  int j,i,k;
+  for ( j=0; j<num_occupied_sites; j++){
+    for ( i =0; i<p;i++){
+      rotated_coords[j*p+i] = 0.0; // Initialize the rotated coordinate to zero
+      for( k=0; k<p; k++){
+        rotated_coords[j*p+i] +=  R[k][i]*kmc_coords[k+j*p];
       }
-  }
-  return c;
+    }
+  }  
 }
+
 std::vector<int64_t> AppDiffusionMultiphaseGCN::linearize_int (const std::vector<std::vector<int64_t>> &A){
   int64_t num_rows = A.size();
   int64_t num_cols = A[0].size();
@@ -822,24 +816,40 @@ std::vector<int64_t> AppDiffusionMultiphaseGCN::linearize_int (const std::vector
   return B;
 }
 
-double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::vector<std::vector<double>>& local_coords,std::vector<std::vector<double>>& md_coords, std::vector<int>& neighbor_types,int num_occupied_sites){
+void AppDiffusionMultiphaseGCN::reset_vectors(){
+  /*
+    Resetting the class variables vectors to zero after each 
+    barrier energy calculation for the next hop calculation
+  */
+  int o,k,kk;
+  for (o=0; o<3; o++){
+    new_x[o] = 0.0;
+    new_y[o] = 0.0;
+    new_z[o] = 0.0;
+  }
+  for (k=0; k<3; k++){
+    for (kk=0; kk<3; kk++){
+      R[k][kk] = 0.0; 
+      rotated_cs[k][kk] = 0.0;
+    }
+  }
+  first_shell.resize(gnn_node_size,0);
+  edge_attr_vec.resize(gnn_edge_size,0.0);
+  rotated_coords.resize(MAX_NEIGH_SIZE*3,0.0);
+  selected_coords.resize(gnn_node_size*3,0.0);
+}
+
+double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, int num_occupied_sites){
+
+  /*
+    Calculating the barrier energy for the hop from site i to site j
+    Using the local coordinates of the occupied sites (KMC coordinates and MD coordinates)
+    Align the neigbor sites with the GNN input format
+  */
   int o,l, k, kk,flag;
   int src, dst;
-  std::vector<int64_t> first_shell(42,0);
-  std::vector<double> new_x(3);
-  std::vector<double> new_y(3);
-  std::vector<double> new_z(3);
-  std::vector<std::vector<double>> original_cs ={
-        {1.0, 0.0, 0.0},
-        {0.0, 1.0, 0.0},
-        {0.0, 0.0, 1.0}
-      };
 
-  std::vector<std::vector<double>> rotated_cs(3, std::vector<double>(3,0.0));
-  std::vector<std::vector<double>> R(3, std::vector<double>(3,0.0));
-  std::vector<std::vector<double>> rotated_coords(num_occupied_sites,std::vector<double>(3,0.0));
-  std::vector<std::vector<double>> selected_coords(42, std::vector<double>(3,0.0));
-  std::vector<float> edge_attr_vec(edge_index_vec.size(),0.0);
+  // Calculating the direction vector from site i to site j
   for ( o=0; o<3; o++){
     new_x[o] = xyz[j][o] - xyz[i][o];
     if (new_x[o]>half_box_dims[o]){
@@ -849,7 +859,12 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
       new_x[o] = new_x[o] + box_dims[o];
     }
   }
-
+  /*
+      Calculating the direction perpendicular to the direction vector from site i to site j  
+      And then assigning it to the new_y vector
+      Then use the vector to calculate the new_z vector
+      Destinations are the octahedral destinations (Possible sites for H or Vacancy) --> User provided in the json file
+  */
   double dot_product = 1.0;
   for ( l =0;l<destinations.size();l++){
     dot_product = vec_dot(new_x, destinations[l]);
@@ -858,61 +873,69 @@ double AppDiffusionMultiphaseGCN::calculate_barrier_energy(int i, int j, std::ve
       break;
     }
   }
+  new_z = vec_cross(new_x, new_y);
+
+  // Assigning the new_x, new_y, new_z vectors to the rotated_cs vector
   rotated_cs[0]= new_x;
   rotated_cs[1]= new_y;
-  new_z = vec_cross(new_x, new_y);
   rotated_cs[2]= new_z;
 
+  // Calculating the rotation matrix R --> Using the original_cs and rotated_cs vectors
   for ( k=0; k<3; k++){
     for ( kk=0; kk<3; kk++){
         R[k][kk] = vec_dot(original_cs[k],rotated_cs[kk])/(vec_norm(original_cs[k])*vec_norm(rotated_cs[kk]));
     }
   }
-  // Rotating the local coordinates with R
-  for ( k = 0; k<num_occupied_sites;k++){
-    rotated_coords[k] = mat_vecmul(R,local_coords[k]);
-  }
- //Checking the occupancy of the local coordinates
+  // Rotating the local coordinates with Rotation Matrix R
+  rotate_vectors(num_occupied_sites);
+  //Checking the occupancy of the local coordinates
   for (k =0; k<num_occupied_sites;k++){
     for (kk=0;kk<first_shell.size();kk++){
       flag=1;
       for(o=0; o<3;o++){
-        if (fabs(first_shell_coords[kk][o]-rotated_coords[k][o])>TOLERANCE){
+        if (fabs(first_shell_coords[kk][o]-rotated_coords[k*3+o])>TOLERANCE){
           flag=0;
           break;
         }
       }
       if(flag==1){
-        if (neighbor_types[k]==NI) first_shell[kk] = 1;
-        else if (neighbor_types[k]==H) first_shell[kk] = 2;
+        if (neigh_types[k]==NI) first_shell[kk] = 1;
+        else if (neigh_types[k]==H) first_shell[kk] = 2;
         else first_shell[kk] = 0;  // Vacancy type is zero for the GCN input
         for (o=0; o<3;o++){
-          selected_coords[kk][o] = md_coords[k][o];
+          selected_coords[kk*3+o] = md_coords[k*3+o];
         }
         break;
       }                                                                                      
     }
   }
-  for (l=0;l<edge_index_vec.size(); l++){
-    src = edge_index_vec[l][0];
-    dst = edge_index_vec[l][1];
-    edge_attr_vec[l] = calculate_distance(selected_coords[src], selected_coords[dst]);
+
+  /*
+    Edge_index_vector --> Provided by the user in the json file
+    Using connectivity defined by the edge_index_vector to calculate the distance between the selected sites
+  */
+  for (l=0;l<gnn_edge_size; l++){
+    src = edge_index_linearized[l*2];
+    dst = edge_index_linearized[l*2+1];
+    edge_attr_vec[l] = calculate_distance(src, dst);
   }
+  // Converting the first_shell vector to a torch tensor
+  torch::Tensor atom_type = torch::from_blob(first_shell.data(),{gnn_node_size}, torch::dtype(torch::kLong)).clone();
+  torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{gnn_edge_size}, torch::dtype(torch::kFloat)).clone();
 
-  torch::Tensor atom_type = torch::from_blob(first_shell.data(),{42}, torch::dtype(torch::kLong)).clone();
-  torch::Tensor edge_attr = torch::from_blob(edge_attr_vec.data(),{478}, torch::dtype(torch::kFloat)).clone();
-
-
+  // Inputs to the GCN model --> Edge_index, atom_type, edge_attr, batch
   std::vector<torch::jit::IValue> inputs = { edge_index,atom_type ,edge_attr, batch};
-  // auto eb = gcn.forward(inputs).toTensor().to(torch::kCPU).item<double>();
-  // Mean, std: 0.39268717 0.03553854
   auto eb = gcn.forward(inputs).toTensor().item<double>(); 
-  // double eb = 0.40; // Dummy value for debugging
+  reset_vectors();
+
   return eb;
 }
 
 void AppDiffusionMultiphaseGCN::shuffle_indices(std::vector<int>& indices, class RandomPark* random)
 {
+  /*
+    Shuffling the indices of the deposition sites
+  */
   int i,j;
   int n = indices.size();
   for ( i = n-1; i>0; i--){
@@ -1043,7 +1066,7 @@ void AppDiffusionMultiphaseGCN::clear_events(int i)
     freeevent = index;
     nevents--;
     index = next;
-    num_events_removed++;
+    // num_events_removed++;
   }
   firstevent[i] = -1;
 }
@@ -1091,7 +1114,6 @@ void AppDiffusionMultiphaseGCN::allocate_data()
   }
 
   echeck = new int[nlocal+nghost];
-  neigh_check = new int[nlocal +nghost];
   hopsite = new int[maxneigh*maxneigh + maxneigh];
 
   box_dims = new double[3];
@@ -1102,6 +1124,33 @@ void AppDiffusionMultiphaseGCN::allocate_data()
   half_box_dims[0] = box_dims[0] * 0.5;
   half_box_dims[1] = box_dims[1] * 0.5;
   half_box_dims[2] = box_dims[2] * 0.5;
+
+  // Allocating the data structures for the jump rate calculation
+  local_neigh_check.resize(nlocal + nghost, 0);
+  neigh_types.resize(MAX_NEIGH_SIZE);
+  xi.resize(3, 0.0);
+  xmdi.resize(3, 0.0);
+  kmc_coords.resize(3*MAX_NEIGH_SIZE, 0.0);
+  md_coords.resize(3*MAX_NEIGH_SIZE, 0.0);
+
+  first_shell.resize(gnn_node_size,0);
+  new_x.resize(3, 0.0);
+  new_y.resize(3, 0.0);
+  new_z.resize(3, 0.0);
+  original_cs.resize(3, std::vector<double>(3,0.0));
+  rotated_cs.resize(3, std::vector<double>(3,0.0));
+  R.resize(3, std::vector<double>(3,0.0));
+  rotated_coords.resize(MAX_NEIGH_SIZE*3, 0.0);
+  selected_coords.resize(gnn_node_size*3, 0.0);
+  edge_attr_vec.resize(gnn_edge_size,0.0);
+  original_cs ={
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0}
+  };
+
+
+
 
   memory->create(firstevent,nlocal,"app:firstevent");
 }
